@@ -1,0 +1,313 @@
+import React, { useState, useEffect } from 'react';
+
+export default function ProductModal({ isOpen, onClose, onSave, initialProduct }) {
+  const [name, setName] = useState('');
+  const [sku, setSku] = useState('');
+  const [category, setCategory] = useState('feeds');
+  const [pet, setPet] = useState('all');
+  const [price, setPrice] = useState('');
+  const [originalPrice, setOriginalPrice] = useState('');
+  const [stockQuantity, setStockQuantity] = useState(25);
+  const [badge, setBadge] = useState('');
+  const [img, setImg] = useState('🐾');
+  const [imageUrl, setImageUrl] = useState('');
+  const [desc, setDesc] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (initialProduct) {
+      setName(initialProduct.name || '');
+      setSku(initialProduct.sku || '');
+      setCategory(initialProduct.category || 'feeds');
+      setPet(initialProduct.pet || 'all');
+      setPrice(initialProduct.price || '');
+      setOriginalPrice(initialProduct.originalPrice || '');
+      setStockQuantity(initialProduct.stockQuantity ?? 25);
+      setBadge(initialProduct.badge || '');
+      setImg(initialProduct.img || '🐾');
+      setImageUrl(initialProduct.imageUrl || '');
+      setDesc(initialProduct.desc || '');
+    } else {
+      setName('');
+      setSku('');
+      setCategory('feeds');
+      setPet('all');
+      setPrice('');
+      setOriginalPrice('');
+      setStockQuantity(25);
+      setBadge('');
+      setImg('🐾');
+      setImageUrl('');
+      setDesc('');
+    }
+  }, [initialProduct, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || !price) {
+      alert("Please provide product name and price.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onSave({
+        name,
+        sku,
+        category,
+        pet,
+        price: parseFloat(price),
+        originalPrice: parseFloat(originalPrice) || 0,
+        stockQuantity: parseInt(stockQuantity, 10) || 0,
+        badge,
+        img,
+        imageUrl,
+        desc
+      });
+      onClose();
+    } catch (error) {
+      alert(error.message || 'The product could not be saved. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="product-modal-overlay" style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(30, 41, 59, 0.75)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px',
+      zIndex: 2100,
+      fontFamily: 'var(--font-play)'
+    }}>
+      <div className="product-modal-card" style={{
+        background: '#fff',
+        borderRadius: '26px',
+        border: '2px solid var(--play-border)',
+        boxShadow: '0 24px 60px rgba(45, 49, 66, 0.18)',
+        width: '100%',
+        maxWidth: '560px',
+        maxHeight: '90vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '20px 24px',
+          background: 'linear-gradient(135deg, var(--play-yellow) 0%, #FFE197 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: 'var(--play-charcoal)' }}>
+            {initialProduct ? '✏️ Edit Catalog Product' : '➕ Add New Product'}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: '#fff',
+              border: 'none',
+              borderRadius: '50%',
+              width: '44px',
+              height: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(45, 49, 66, 0.12)'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+              Product Name *
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              style={{ width: '100%', boxSizing: 'border-box' }}
+              placeholder="e.g. Oven-Baked Salmon Biscuits"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                Department Category
+              </label>
+              <select
+                className="form-input"
+                style={{ width: '100%', boxSizing: 'border-box' }}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="feeds">🥫 Feeds & Food</option>
+                <option value="accessories">🎾 Accessories & Toys</option>
+                <option value="grooming">🛁 Grooming</option>
+                <option value="wellness">💊 Wellness & Health</option>
+              </select>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                Species Target
+              </label>
+              <select
+                className="form-input"
+                style={{ width: '100%', boxSizing: 'border-box' }}
+                value={pet}
+                onChange={(e) => setPet(e.target.value)}
+              >
+                <option value="all">🐾 All Pets</option>
+                <option value="dog">🐶 Dogs Only</option>
+                <option value="cat">🐱 Cats Only</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                Price (₱ PHP) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className="form-input"
+                style={{ width: '100%', boxSizing: 'border-box' }}
+                placeholder="29.99"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                required
+              />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                Original Price (₱ Strikethrough)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className="form-input"
+                style={{ width: '100%', boxSizing: 'border-box' }}
+                placeholder="39.99"
+                value={originalPrice}
+                onChange={(e) => setOriginalPrice(e.target.value)}
+              />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                Stock Qty
+              </label>
+              <input
+                type="number"
+                min="0"
+                className="form-input"
+                style={{ width: '100%', boxSizing: 'border-box' }}
+                value={stockQuantity}
+                onChange={(e) => setStockQuantity(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ flex: 1.5 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                Promo Badge (Optional)
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                style={{ width: '100%', boxSizing: 'border-box' }}
+                placeholder="e.g. Top Pick, New Recipe, Vet Favorite"
+                value={badge}
+                onChange={(e) => setBadge(e.target.value)}
+              />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                Emoji Fallback
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                style={{ width: '100%', boxSizing: 'border-box' }}
+                value={img}
+                onChange={(e) => setImg(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+              Product Image URL (Unsplash or direct link)
+            </label>
+            <input
+              type="url"
+              className="form-input"
+              style={{ width: '100%', boxSizing: 'border-box' }}
+              placeholder="https://images.unsplash.com/photo-..."
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+              Short Description
+            </label>
+            <textarea
+              className="form-input"
+              rows={3}
+              style={{ width: '100%', boxSizing: 'border-box' }}
+              placeholder="Describe why pets will love this product..."
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <button
+              type="button"
+              className="btn btn-outline btn-pill"
+              onClick={onClose}
+              disabled={isSaving}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary btn-pill"
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving…" : initialProduct ? "Save Changes" : "Add to Catalog 🚀"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

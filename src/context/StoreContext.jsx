@@ -1,0 +1,397 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase, isConfigured } from '../lib/supabase';
+import { DEFAULT_PRODUCTS, DEFAULT_ANNOUNCEMENTS } from '../lib/constants';
+
+const StoreContext = createContext();
+
+const STORAGE_KEY_PRODUCTS = "petchup_products";
+const STORAGE_KEY_ANNOUNCEMENTS = "petchup_announcements";
+
+export function StoreProvider({ children }) {
+  const [products, setProducts] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_PRODUCTS);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (_) {}
+    return DEFAULT_PRODUCTS;
+  });
+
+  const [announcements, setAnnouncements] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_ANNOUNCEMENTS);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (_) {}
+    return DEFAULT_ANNOUNCEMENTS;
+  });
+
+  const [loading, setLoading] = useState(false);
+
+  // Sync with Supabase Cloud
+  const syncFromSupabase = async () => {
+    if (!isConfigured()) return;
+    setLoading(true);
+
+    try {
+      // 1. Products
+      const { data: cloudProds, error: prodErr } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (prodErr) throw prodErr;
+      if (Array.isArray(cloudProds)) {
+        const mapped = cloudProds.map(row => ({
+          id: row.id,
+          sku: row.sku || ("SKU-" + row.id.toUpperCase()),
+          name: row.name,
+          category: row.category,
+          categoryLabel: row.category_label,
+          pet: row.pet,
+          price: parseFloat(row.price),
+          originalPrice: parseFloat(row.original_price || 0),
+          stockQuantity: typeof row.stock_quantity === 'number' ? row.stock_quantity : (row.in_stock ? 10 : 0),
+          imageUrl: row.image_url || "",
+          unit: row.unit || "",
+          rating: parseFloat(row.rating || 5),
+          ratingCount: parseInt(row.rating_count || 1, 10),
+          popularity: parseInt(row.popularity || 90, 10),
+          img: row.img || "🐾",
+          badge: row.badge || "",
+          badgeClass: row.badge_class || "",
+          tintClass: row.tint_class || "bg-yellow-tint",
+          desc: row.desc || "",
+          inStock: Boolean(row.in_stock),
+          priceHistory: Array.isArray(row.price_history) ? row.price_history : []
+        }));
+        setProducts(mapped);
+        localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(mapped));
+      }
+
+      // 2. Announcements
+      const { data: cloudAnns, error: annErr } = await supabase
+        .from('announcements')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (annErr) throw annErr;
+      if (Array.isArray(cloudAnns)) {
+        const mapped = cloudAnns.map(row => ({
+          id: row.id,
+          pill: row.pill,
+          title: row.title || "",
+          text: row.text || row.message || "",
+          link: row.link || "/shop",
+          linkText: row.link_text || "Shop Deals →",
+          startDate: row.start_date || "",
+          endDate: row.end_date || "",
+          isActive: Boolean(row.is_active),
+          createdAt: (row.created_at || "").split('T')[0]
+        }));
+        setAnnouncements(mapped);
+        localStorage.setItem(STORAGE_KEY_ANNOUNCEMENTS, JSON.stringify(mapped));
+      }
+    } catch (err) {
+      console.warn("Error syncing with Supabase:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    syncFromSupabase();
+  }, []);
+
+  // Save to localStorage when state changes
+  const saveProductsList = (newList) => {
+    setProducts(newList);
+    localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(newList));
+  };
+
+  const saveAnnouncementsList = (newList) => {
+    setAnnouncements(newList);
+    localStorage.setItem(STORAGE_KEY_ANNOUNCEMENTS, JSON.stringify(newList));
+  };
+
+  // Product Actions
+  const addProduct = async (productData) => {
+    const currentPrice = parseFloat(productData.price) || 9.99;
+    const stockQty = typeof productData.stockQuantity === 'number'
+      ? productData.stockQuantity
+      : parseInt(productData.stockQuantity, 10) || 10;
+
+    const newProduct = {
+      id: "prod-" + Date.now(),
+      sku: productData.sku ? productData.sku.trim().toUpperCase() : ("SKU-" + Date.now().toString().slice(-6)),
+      name: productData.name.trim(),
+      category: productData.category || "accessories",
+      categoryLabel: productData.categoryLabel || "Pet Goodies",
+      pet: productData.pet || "all",
+      price: currentPrice,
+      originalPrice: parseFloat(productData.originalPrice) || 0,
+      stockQuantity: stockQty,
+      imageUrl: productData.imageUrl || "",
+      unit: productData.unit || "",
+      rating: parseFloat(productData.rating) || 5,
+      ratingCount: parseInt(productData.ratingCount, 10) || 1,
+      popularity: parseInt(productData.popularity, 10) || 90,
+      img: productData.img || "🐾",
+      badge: productData.badge ? productData.badge.trim() : "",
+      badgeClass: productData.badgeClass || "",
+      tintClass: productData.tintClass || "bg-yellow-tint",
+      desc: productData.desc ? productData.desc.trim() : "Lovingly prepared for happy pets.",
+      inStock: stockQty > 0 && productData.inStock !== false,
+      priceHistory: [{
+        price: currentPrice,
+        changed_at: new Date().toISOString(),
+        note: "Initial product listing"
+      }]
+    };
+
+    if (isConfigured()) {
+      const { error } = await supabase.from('products').upsert({
+          id: newProduct.id,
+          sku: newProduct.sku,
+          name: newProduct.name,
+          category: newProduct.category,
+          category_label: newProduct.categoryLabel,
+          pet: newProduct.pet,
+          price: newProduct.price,
+          original_price: newProduct.originalPrice,
+          stock_quantity: newProduct.stockQuantity,
+          in_stock: newProduct.inStock,
+          image_url: newProduct.imageUrl,
+          unit: newProduct.unit,
+          rating: newProduct.rating,
+          rating_count: newProduct.ratingCount,
+          popularity: newProduct.popularity,
+          img: newProduct.img,
+          badge: newProduct.badge,
+          badge_class: newProduct.badgeClass,
+          tint_class: newProduct.tintClass,
+          desc: newProduct.desc,
+          price_history: newProduct.priceHistory
+        });
+      if (error) throw error;
+    }
+
+    const updatedList = [newProduct, ...products];
+    saveProductsList(updatedList);
+
+    return newProduct;
+  };
+
+  const updateProduct = async (id, updates) => {
+    const idx = products.findIndex(p => p.id === id);
+    if (idx === -1) return null;
+
+    const current = products[idx];
+    const updated = { ...current, ...updates };
+
+    if (updates.price !== undefined && parseFloat(updates.price) !== parseFloat(current.price)) {
+      const history = Array.isArray(current.priceHistory) ? [...current.priceHistory] : [];
+      history.push({
+        price: parseFloat(updates.price),
+        changed_at: new Date().toISOString(),
+        note: updates.priceNote || "Price updated by store admin"
+      });
+      updated.priceHistory = history;
+    }
+
+    if (updates.stockQuantity !== undefined) {
+      const qty = parseInt(updates.stockQuantity, 10);
+      updated.stockQuantity = isNaN(qty) ? 0 : qty;
+      if (updated.stockQuantity <= 0) {
+        updated.inStock = false;
+      }
+    }
+
+    if (isConfigured()) {
+      const { error } = await supabase.from('products').upsert({
+          id: updated.id,
+          sku: updated.sku,
+          name: updated.name,
+          category: updated.category,
+          category_label: updated.categoryLabel,
+          pet: updated.pet,
+          price: updated.price,
+          original_price: updated.originalPrice,
+          stock_quantity: updated.stockQuantity,
+          in_stock: updated.inStock,
+          image_url: updated.imageUrl,
+          unit: updated.unit,
+          rating: updated.rating,
+          rating_count: updated.ratingCount,
+          popularity: updated.popularity,
+          img: updated.img,
+          badge: updated.badge,
+          badge_class: updated.badgeClass,
+          tint_class: updated.tintClass,
+          desc: updated.desc,
+          price_history: updated.priceHistory,
+          updated_at: new Date().toISOString()
+        });
+      if (error) throw error;
+    }
+
+    const updatedList = [...products];
+    updatedList[idx] = updated;
+    saveProductsList(updatedList);
+
+    return updated;
+  };
+
+  const deleteProduct = async (id) => {
+    if (isConfigured()) {
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) throw error;
+    }
+
+    const updatedList = products.filter(p => p.id !== id);
+    saveProductsList(updatedList);
+  };
+
+  // Announcement Actions
+  const addAnnouncement = async (data) => {
+    let list = [...announcements];
+    if (data.isActive) {
+      list = list.map(a => ({ ...a, isActive: false }));
+    }
+
+    const newAnn = {
+      id: "ann-" + Date.now(),
+      pill: data.pill ? data.pill.trim() : "📢 ANNOUNCEMENT",
+      text: data.text.trim(),
+      link: data.link ? data.link.trim() : "/shop",
+      linkText: data.linkText ? data.linkText.trim() : "Learn More →",
+      title: data.title?.trim() || "",
+      startDate: data.startDate || "",
+      endDate: data.endDate || "",
+      isActive: Boolean(data.isActive),
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+
+    if (isConfigured()) {
+      const { error } = await supabase.from('announcements').upsert({
+          id: newAnn.id,
+          pill: newAnn.pill,
+          text: newAnn.text,
+          link: newAnn.link,
+          link_text: newAnn.linkText,
+          title: newAnn.title,
+          start_date: newAnn.startDate || null,
+          end_date: newAnn.endDate || null,
+          is_active: newAnn.isActive
+        });
+      if (error) throw error;
+    }
+
+    const updatedList = [newAnn, ...list];
+    saveAnnouncementsList(updatedList);
+
+    return newAnn;
+  };
+
+  const updateAnnouncement = async (id, updates) => {
+    let list = [...announcements];
+    if (updates.isActive) {
+      list = list.map(a => (a.id !== id ? { ...a, isActive: false } : a));
+    }
+
+    const idx = list.findIndex(a => a.id === id);
+    if (idx === -1) return null;
+
+    list[idx] = { ...list[idx], ...updates };
+
+    if (isConfigured()) {
+      const { error } = await supabase.from('announcements').upsert({
+          id: list[idx].id,
+          pill: list[idx].pill,
+          text: list[idx].text,
+          link: list[idx].link,
+          link_text: list[idx].linkText,
+          title: list[idx].title || "",
+          start_date: list[idx].startDate || null,
+          end_date: list[idx].endDate || null,
+          is_active: list[idx].isActive
+        });
+      if (error) throw error;
+    }
+
+    saveAnnouncementsList(list);
+
+    return list[idx];
+  };
+
+  const toggleAnnouncementActive = async (id) => {
+    const target = announcements.find(a => a.id === id);
+    if (!target) return;
+    const willBeActive = !target.isActive;
+
+    const list = announcements.map(a => ({
+      ...a,
+      isActive: a.id === id ? willBeActive : false
+    }));
+
+    if (isConfigured()) {
+      const { error } = await supabase.from('announcements').upsert(
+        list.map(ann => ({
+            id: ann.id,
+            pill: ann.pill,
+            text: ann.text,
+            link: ann.link,
+            link_text: ann.linkText,
+            is_active: ann.isActive
+          }))
+      );
+      if (error) throw error;
+    }
+
+    saveAnnouncementsList(list);
+  };
+
+  const deleteAnnouncement = async (id) => {
+    if (isConfigured()) {
+      const { error } = await supabase.from('announcements').delete().eq('id', id);
+      if (error) throw error;
+    }
+
+    const list = announcements.filter(a => a.id !== id);
+    saveAnnouncementsList(list);
+  };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const activeAnnouncement = announcements.find(a => (
+    a.isActive && (!a.startDate || a.startDate <= today) && (!a.endDate || a.endDate >= today)
+  )) || null;
+
+  return (
+    <StoreContext.Provider value={{
+      products,
+      announcements,
+      activeAnnouncement,
+      loading,
+      addProduct,
+      updateProduct,
+      deleteProduct,
+      addAnnouncement,
+      updateAnnouncement,
+      toggleAnnouncementActive,
+      deleteAnnouncement,
+      syncFromSupabase
+    }}>
+      {children}
+    </StoreContext.Provider>
+  );
+}
+
+export function useStore() {
+  const context = useContext(StoreContext);
+  if (!context) throw new Error("useStore must be used within a StoreProvider");
+  return context;
+}

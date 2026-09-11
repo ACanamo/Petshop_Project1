@@ -551,6 +551,12 @@ CREATE TRIGGER trg_validate_order_totals
   BEFORE INSERT ON public.orders
   FOR EACH ROW EXECUTE PROCEDURE public.validate_order_totals();
 
+-- FIX security_definer_function_executable: like is_admin() and
+-- handle_new_user() above, Postgres grants EXECUTE to PUBLIC on new
+-- functions by default. This is only ever meant to run as a trigger, not
+-- be called directly via /rest/v1/rpc/, so revoke the default grant.
+REVOKE EXECUTE ON FUNCTION public.validate_order_totals() FROM PUBLIC, anon, authenticated;
+
 -- ==============================================================================
 -- NOTE: auth_leaked_password_protection warning must be fixed in Supabase Dashboard:
 --   Authentication -> Providers -> Email -> "Enable Leaked Password Protection"

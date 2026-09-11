@@ -479,6 +479,79 @@ SET public = true,
 WHERE id = 'product-images';
 
 -- ==============================================================================
+-- 12. SERVER-SIDE ORDER TOTAL VALIDATION
+-- FIX price_manipulation: subtotal/discount_amount/total were previously
+-- whatever the client sent on INSERT. Since the anon key is public, anyone
+-- could call supabase.from('orders').insert(...) directly from devtools with
+-- fabricated prices or discounts, bypassing the app's checkout math entirely.
+-- This trigger ignores those client-submitted numbers and recomputes them
+-- from the authoritative public.products prices and the fixed coupon table
+-- below (kept in sync with the codes in src/context/CartContext.jsx).
+-- Runs on INSERT only — updateOrderStatus() only ever changes `status`, so
+-- admin status updates are untouched, and RLS already restricts UPDATE on
+-- orders to admins only (see orders_update_admin above).
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.validate_order_totals()
+RETURNS TRIGGER AS $$
+DECLARE
+  item JSONB;
+  item_price NUMERIC(10, 2);
+  item_qty INTEGER;
+  real_subtotal NUMERIC(10, 2) := 0;
+  real_item_count INTEGER := 0;
+  discount_percent NUMERIC(5, 2) := 0;
+  normalized_code TEXT := UPPER(TRIM(COALESCE(NEW.discount_code, '')));
+BEGIN
+  IF jsonb_typeof(NEW.items) IS DISTINCT FROM 'array' OR jsonb_array_length(NEW.items) = 0 THEN
+    RAISE EXCEPTION 'Order must contain at least one item';
+  END IF;
+
+  FOR item IN SELECT * FROM jsonb_array_elements(NEW.items)
+  LOOP
+    item_qty := GREATEST(COALESCE((item->>'qty')::INTEGER, 0), 0);
+    IF item_qty <= 0 THEN
+      RAISE EXCEPTION 'Invalid item quantity in order';
+    END IF;
+
+    SELECT price INTO item_price
+    FROM public.products
+    WHERE id = (item->>'id');
+
+    IF item_price IS NULL THEN
+      RAISE EXCEPTION 'Unknown product % in order', item->>'id';
+    END IF;
+
+    real_subtotal := real_subtotal + (item_price * item_qty);
+    real_item_count := real_item_count + item_qty;
+  END LOOP;
+
+  discount_percent := CASE normalized_code
+    WHEN 'FIRSTPAW20' THEN 20
+    WHEN 'WELCOME20'  THEN 20
+    WHEN 'FIRSTPAW15' THEN 15
+    WHEN 'PAWTY15'    THEN 15
+    WHEN 'MEOW10'     THEN 10
+    WHEN 'WOOF10'     THEN 10
+    ELSE 0
+  END;
+
+  NEW.item_count := real_item_count;
+  NEW.subtotal := ROUND(real_subtotal, 2);
+  NEW.discount_amount := ROUND(real_subtotal * discount_percent / 100, 2);
+  NEW.total := GREATEST(0, ROUND(real_subtotal - NEW.discount_amount, 2));
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+   SECURITY DEFINER
+   SET search_path = '';
+
+DROP TRIGGER IF EXISTS trg_validate_order_totals ON public.orders;
+CREATE TRIGGER trg_validate_order_totals
+  BEFORE INSERT ON public.orders
+  FOR EACH ROW EXECUTE PROCEDURE public.validate_order_totals();
+
+-- ==============================================================================
 -- NOTE: auth_leaked_password_protection warning must be fixed in Supabase Dashboard:
 --   Authentication -> Providers -> Email -> "Enable Leaked Password Protection"
 --   (toggle it ON). This cannot be changed via SQL.

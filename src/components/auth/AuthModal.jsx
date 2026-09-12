@@ -25,6 +25,18 @@ export default function AuthModal() {
     setErrorMessage('');
     setSuccessMessage('');
 
+    // AuthModal stays mounted (it just renders null when closed), so form
+    // state would otherwise carry over from the last time it was open —
+    // e.g. a signed-out user reopening "Sign In" would still see the
+    // previous email/password filled in.
+    setLoginEmail('');
+    setLoginPassword('');
+    setRegName('');
+    setRegEmail('');
+    setRegPassword('');
+    setRegPetName('');
+    setRegPetType('dog');
+
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') closeAuth();
     };

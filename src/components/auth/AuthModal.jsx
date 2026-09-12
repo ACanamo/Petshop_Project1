@@ -88,10 +88,10 @@ export default function AuthModal() {
       zIndex: 2000
     }}>
       <div className="auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" style={{
-        background: '#fff',
-        borderRadius: '24px',
-        border: '3px solid #1e293b',
-        boxShadow: '6px 6px 0px #1e293b',
+        background: 'var(--play-cream, #FFFDF9)',
+        borderRadius: '28px',
+        border: 'none',
+        boxShadow: 'none',
         width: '100%',
         maxWidth: '460px',
         overflow: 'hidden',
@@ -106,14 +106,15 @@ export default function AuthModal() {
             position: 'absolute',
             top: '16px',
             right: '16px',
-            background: '#f1f5f9',
-            border: '2px solid #1e293b',
+            background: 'rgba(255, 255, 255, 0.28)',
+            border: 'none',
             borderRadius: '50%',
-            width: '44px',
-            height: '44px',
+            width: '40px',
+            height: '40px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            color: '#fff',
             fontWeight: 800,
             cursor: 'pointer',
             zIndex: 10
@@ -125,16 +126,15 @@ export default function AuthModal() {
 
         {/* Modal Header */}
         <div style={{
-          padding: '24px 24px 16px',
-          background: 'var(--color-yellow, #ffd166)',
-          borderBottom: '3px solid #1e293b',
+          padding: '32px 24px 20px',
+          background: 'linear-gradient(135deg, var(--play-orange, #FF6B35) 0%, #FF834E 100%)',
           textAlign: 'center'
         }}>
           <div style={{ fontSize: '36px', marginBottom: '6px' }}>🐾</div>
-          <h3 id="auth-modal-title" style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#1e293b' }}>
+          <h3 id="auth-modal-title" style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#fff' }}>
             {activeTab === 'login' ? 'Welcome Back!' : 'Join The Fur Family!'}
           </h3>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#475569', fontWeight: 600 }}>
+          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
             {activeTab === 'login'
               ? 'Sign in to access your saved pets & order history'
               : 'Create an account & get an instant 20% OFF coupon'}
@@ -143,22 +143,24 @@ export default function AuthModal() {
           {/* Tab Switcher */}
           <div style={{
             display: 'flex',
-            gap: '8px',
-            background: 'rgba(255,255,255,0.7)',
+            gap: '4px',
+            background: 'rgba(255,255,255,0.22)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             padding: '4px',
             borderRadius: '999px',
-            marginTop: '16px',
-            border: '2px solid #1e293b'
+            marginTop: '18px',
+            border: '1px solid rgba(255,255,255,0.35)'
           }}>
             <button
               type="button"
               style={{
                 flex: 1,
-                padding: '8px',
+                padding: '9px',
                 borderRadius: '999px',
                 border: 'none',
-                background: activeTab === 'login' ? '#1e293b' : 'transparent',
-                color: activeTab === 'login' ? '#fff' : '#1e293b',
+                background: activeTab === 'login' ? '#fff' : 'transparent',
+                color: activeTab === 'login' ? 'var(--play-charcoal, #2D3142)' : 'rgba(255,255,255,0.85)',
                 fontWeight: 700,
                 fontSize: '13px',
                 cursor: 'pointer',
@@ -175,11 +177,11 @@ export default function AuthModal() {
               type="button"
               style={{
                 flex: 1,
-                padding: '8px',
+                padding: '9px',
                 borderRadius: '999px',
                 border: 'none',
-                background: activeTab === 'register' ? '#1e293b' : 'transparent',
-                color: activeTab === 'register' ? '#fff' : '#1e293b',
+                background: activeTab === 'register' ? '#fff' : 'transparent',
+                color: activeTab === 'register' ? 'var(--play-charcoal, #2D3142)' : 'rgba(255,255,255,0.85)',
                 fontWeight: 700,
                 fontSize: '13px',
                 cursor: 'pointer',
@@ -201,8 +203,8 @@ export default function AuthModal() {
             <div style={{
               background: '#fee2e2',
               color: '#b91c1c',
-              border: '2px solid #ef4444',
-              borderRadius: '12px',
+              border: '1.5px solid #f3a5a5',
+              borderRadius: '14px',
               padding: '10px 14px',
               fontSize: '13px',
               fontWeight: 600,
@@ -216,8 +218,8 @@ export default function AuthModal() {
             <div style={{
               background: '#dcfce7',
               color: '#15803d',
-              border: '2px solid #22c55e',
-              borderRadius: '12px',
+              border: '1.5px solid #86efac',
+              borderRadius: '14px',
               padding: '10px 14px',
               fontSize: '13px',
               fontWeight: 600,
@@ -236,7 +238,7 @@ export default function AuthModal() {
                 <input
                   type="text"
                   className="form-input"
-                  style={{ width: '100%', boxSizing: 'border-box' }}
+                  style={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
                   placeholder="e.g. alex@example.com"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
@@ -251,7 +253,7 @@ export default function AuthModal() {
                 <input
                   type="password"
                   className="form-input"
-                  style={{ width: '100%', boxSizing: 'border-box' }}
+                  style={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
                   placeholder="••••••••"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
@@ -261,8 +263,9 @@ export default function AuthModal() {
 
               <button
                 type="submit"
-                className="btn btn-primary btn-pill btn-full"
+                className="btn-pop-yellow"
                 disabled={loading}
+                style={{ width: '100%', boxSizing: 'border-box', border: 'none', opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
               >
                 {loading ? "Signing In..." : "Sign In 🐾"}
               </button>
@@ -276,7 +279,7 @@ export default function AuthModal() {
                 <input
                   type="text"
                   className="form-input"
-                  style={{ width: '100%', boxSizing: 'border-box' }}
+                  style={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
                   placeholder="e.g. Maria Santos"
                   value={regName}
                   onChange={(e) => setRegName(e.target.value)}
@@ -291,7 +294,7 @@ export default function AuthModal() {
                 <input
                   type="email"
                   className="form-input"
-                  style={{ width: '100%', boxSizing: 'border-box' }}
+                  style={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
                   placeholder="maria@example.com"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
@@ -306,7 +309,7 @@ export default function AuthModal() {
                 <input
                   type="password"
                   className="form-input"
-                  style={{ width: '100%', boxSizing: 'border-box' }}
+                  style={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
                   placeholder="••••••••"
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
@@ -323,7 +326,7 @@ export default function AuthModal() {
                   <input
                     type="text"
                     className="form-input"
-                    style={{ width: '100%', boxSizing: 'border-box' }}
+                    style={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
                     placeholder="e.g. Milo"
                     value={regPetName}
                     onChange={(e) => setRegPetName(e.target.value)}
@@ -335,7 +338,7 @@ export default function AuthModal() {
                   </label>
                   <select
                     className="form-input"
-                    style={{ width: '100%', boxSizing: 'border-box' }}
+                    style={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
                     value={regPetType}
                     onChange={(e) => setRegPetType(e.target.value)}
                   >
@@ -349,8 +352,9 @@ export default function AuthModal() {
 
               <button
                 type="submit"
-                className="btn btn-primary btn-pill btn-full"
+                className="btn-pop-yellow"
                 disabled={loading}
+                style={{ width: '100%', boxSizing: 'border-box', border: 'none', opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
               >
                 {loading ? "Creating Account..." : "Create Account & Get 20% OFF 🎉"}
               </button>

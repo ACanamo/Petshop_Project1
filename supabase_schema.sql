@@ -100,6 +100,14 @@ ALTER TABLE public.products ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NU
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS popularity INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
+-- Multi-image gallery support: `images` holds an ordered list of URLs
+-- (images[0] is the cover shown on product cards). `image_url` is kept
+-- in sync with images[0] for any old code that still reads it directly.
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+UPDATE public.products
+SET images = jsonb_build_array(image_url)
+WHERE jsonb_array_length(images) = 0 AND image_url IS NOT NULL AND image_url <> '';
+
 -- FIX 0001: Index the orders.customer_id FK — improves join/filter performance.
 CREATE INDEX IF NOT EXISTS ix_orders_customer_id ON public.orders (customer_id);
 

@@ -7,16 +7,27 @@ const StoreContext = createContext();
 const STORAGE_KEY_PRODUCTS = "petchup_products";
 const STORAGE_KEY_ANNOUNCEMENTS = "petchup_announcements";
 
+// Ensures every product has an `images` gallery array, derived from a
+// legacy single `imageUrl` when needed, so older cached/seed records
+// (which predate multi-image support) work the same as new ones.
+function normalizeProductImages(product) {
+  if (Array.isArray(product.images) && product.images.length > 0) return product;
+  return {
+    ...product,
+    images: product.imageUrl ? [product.imageUrl] : []
+  };
+}
+
 export function StoreProvider({ children }) {
   const [products, setProducts] = useState(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_PRODUCTS);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) return parsed.map(normalizeProductImages);
       }
     } catch (_) {}
-    return DEFAULT_PRODUCTS;
+    return DEFAULT_PRODUCTS.map(normalizeProductImages);
   });
 
   const [announcements, setAnnouncements] = useState(() => {
@@ -61,6 +72,9 @@ export function StoreProvider({ children }) {
           originalPrice: parseFloat(row.original_price || 0),
           stockQuantity: typeof row.stock_quantity === 'number' ? row.stock_quantity : (row.in_stock ? 10 : 0),
           imageUrl: row.image_url || "",
+          images: Array.isArray(row.images) && row.images.length > 0
+            ? row.images
+            : (row.image_url ? [row.image_url] : []),
           unit: row.unit || "",
           rating: parseFloat(row.rating || 5),
           ratingCount: parseInt(row.rating_count || 1, 10),
@@ -129,6 +143,10 @@ export function StoreProvider({ children }) {
       ? productData.stockQuantity
       : parseInt(productData.stockQuantity, 10) || 10;
 
+    const images = Array.isArray(productData.images)
+      ? productData.images.map(url => url.trim()).filter(Boolean)
+      : (productData.imageUrl ? [productData.imageUrl] : []);
+
     const newProduct = {
       id: "prod-" + Date.now(),
       sku: productData.sku ? productData.sku.trim().toUpperCase() : ("SKU-" + Date.now().toString().slice(-6)),
@@ -139,7 +157,8 @@ export function StoreProvider({ children }) {
       price: currentPrice,
       originalPrice: parseFloat(productData.originalPrice) || 0,
       stockQuantity: stockQty,
-      imageUrl: productData.imageUrl || "",
+      images,
+      imageUrl: images[0] || "",
       unit: productData.unit || "",
       rating: parseFloat(productData.rating) || 5,
       ratingCount: parseInt(productData.ratingCount, 10) || 1,
@@ -170,6 +189,7 @@ export function StoreProvider({ children }) {
           stock_quantity: newProduct.stockQuantity,
           in_stock: newProduct.inStock,
           image_url: newProduct.imageUrl,
+          images: newProduct.images,
           unit: newProduct.unit,
           rating: newProduct.rating,
           rating_count: newProduct.ratingCount,
@@ -196,6 +216,11 @@ export function StoreProvider({ children }) {
 
     const current = products[idx];
     const updated = { ...current, ...updates };
+
+    if (Array.isArray(updates.images)) {
+      updated.images = updates.images.map(url => url.trim()).filter(Boolean);
+      updated.imageUrl = updated.images[0] || "";
+    }
 
     if (updates.price !== undefined && parseFloat(updates.price) !== parseFloat(current.price)) {
       const history = Array.isArray(current.priceHistory) ? [...current.priceHistory] : [];
@@ -228,6 +253,7 @@ export function StoreProvider({ children }) {
           stock_quantity: updated.stockQuantity,
           in_stock: updated.inStock,
           image_url: updated.imageUrl,
+          images: updated.images,
           unit: updated.unit,
           rating: updated.rating,
           rating_count: updated.ratingCount,

@@ -7,6 +7,7 @@ export default function ProductQuickViewModal() {
   const { selectedProduct, closeProductView } = useStore();
   const { addToCart } = useCart();
   const [qty, setQty] = useState(1);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
   const [btnText, setBtnText] = useState('');
   const resetButtonTimer = useRef(null);
@@ -14,6 +15,7 @@ export default function ProductQuickViewModal() {
   useEffect(() => {
     // Reset per-product UI state whenever a new product is opened.
     setQty(1);
+    setActiveImageIndex(0);
     setImgError(false);
     setBtnText('');
     window.clearTimeout(resetButtonTimer.current);
@@ -37,6 +39,10 @@ export default function ProductQuickViewModal() {
   const stars = "★".repeat(Math.round(product.rating || 5));
   const stockQuantity = typeof product.stockQuantity === 'number' ? product.stockQuantity : null;
   const maxQty = stockQuantity && stockQuantity > 0 ? stockQuantity : 99;
+  const images = Array.isArray(product.images) && product.images.length > 0
+    ? product.images
+    : (product.imageUrl ? [product.imageUrl] : []);
+  const activeImage = images[activeImageIndex] || images[0] || '';
 
   const handleAddToCart = () => {
     if (!product.inStock) return;
@@ -75,8 +81,8 @@ export default function ProductQuickViewModal() {
           border: 'none',
           boxShadow: 'none',
           width: '100%',
-          maxWidth: '760px',
-          maxHeight: '90vh',
+          maxWidth: '940px',
+          maxHeight: '92vh',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -123,49 +129,84 @@ export default function ProductQuickViewModal() {
         <div className="quick-view-body" style={{ display: 'flex', flex: '1 1 auto', minHeight: 0, overflowY: 'auto', minWidth: 0 }}>
           {/* Image side */}
           <div className="quick-view-image-col" style={{
-            flex: '0 0 42%',
+            flex: '0 0 48%',
             minWidth: 0,
             padding: '24px',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative'
+            flexDirection: 'column',
+            gap: '12px'
           }}>
-            {product.badge && (
-              <div className={`product-badge ${product.badgeClass || getBadgeClass(product.badge)}`} style={{ position: 'absolute', top: '16px', left: '16px' }}>
-                {product.badge}
+            <div style={{ position: 'relative' }}>
+              {product.badge && (
+                <div className={`product-badge ${product.badgeClass || getBadgeClass(product.badge)}`} style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 1 }}>
+                  {product.badge}
+                </div>
+              )}
+              <div
+                className={`product-img-wrap ${product.tintClass || getCategoryTint(product.category)}`}
+                style={{ width: '100%', height: 'auto', aspectRatio: '1 / 1', margin: 0 }}
+              >
+                {activeImage && !imgError ? (
+                  <img
+                    src={activeImage}
+                    alt={product.name}
+                    className="product-real-img"
+                    onError={() => setImgError(true)}
+                  />
+                ) : (
+                  <div className="product-emoji">{normalizeEmoji(product.img)}</div>
+                )}
+              </div>
+            </div>
+
+            {images.length > 1 && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {images.map((url, idx) => (
+                  <button
+                    key={url + idx}
+                    type="button"
+                    onClick={() => {
+                      setActiveImageIndex(idx);
+                      setImgError(false);
+                    }}
+                    aria-label={`View image ${idx + 1}`}
+                    aria-current={idx === activeImageIndex}
+                    style={{
+                      width: '56px',
+                      height: '56px',
+                      flexShrink: 0,
+                      padding: 0,
+                      borderRadius: '10px',
+                      border: idx === activeImageIndex ? '2px solid var(--play-orange, #FF6B35)' : '2px solid rgba(45,49,66,0.12)',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      background: 'var(--play-cream, #FFFDF9)'
+                    }}
+                  >
+                    <img
+                      src={url}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  </button>
+                ))}
               </div>
             )}
-            <div
-              className={`product-img-wrap ${product.tintClass || getCategoryTint(product.category)}`}
-              style={{ width: '100%', height: 'auto', aspectRatio: '1 / 1', margin: 0 }}
-            >
-              {product.imageUrl && !imgError ? (
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="product-real-img"
-                  onError={() => setImgError(true)}
-                />
-              ) : (
-                <div className="product-emoji">{normalizeEmoji(product.img)}</div>
-              )}
-            </div>
           </div>
 
           {/* Info side */}
-          <div style={{ flex: '1 1 auto', minWidth: 0, padding: '24px', display: 'flex', flexDirection: 'column' }}>
-            <h2 id="quick-view-title" style={{ margin: '0 0 8px', fontSize: '1.4rem', fontWeight: 800, color: 'var(--play-charcoal, #2D3142)', lineHeight: 1.3 }}>
+          <div style={{ flex: '1 1 auto', minWidth: 0, padding: '28px', display: 'flex', flexDirection: 'column' }}>
+            <h2 id="quick-view-title" style={{ margin: '0 0 10px', fontSize: '1.75rem', fontWeight: 800, color: 'var(--play-charcoal, #2D3142)', lineHeight: 1.25 }}>
               {product.name}
             </h2>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-              <span style={{ color: '#f59e0b', fontSize: '15px', letterSpacing: '1px' }}>{stars}</span>
-              <span style={{ fontSize: '13px', color: 'var(--play-muted, #6B7082)' }}>({product.ratingCount || 100})</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
+              <span style={{ color: '#f59e0b', fontSize: '17px', letterSpacing: '1px' }}>{stars}</span>
+              <span style={{ fontSize: '14px', color: 'var(--play-muted, #6B7082)' }}>({product.ratingCount || 100})</span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '14px' }}>
-              <strong style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--play-charcoal, #2D3142)' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '16px' }}>
+              <strong style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--play-charcoal, #2D3142)' }}>
                 {formatPeso(product.price)}
               </strong>
               {hasOriginalPrice && (
@@ -177,7 +218,7 @@ export default function ProductQuickViewModal() {
             </div>
 
             {product.desc && (
-              <p style={{ fontSize: '0.92rem', color: 'var(--play-muted, #6B7082)', lineHeight: 1.6, marginBottom: '16px' }}>
+              <p style={{ fontSize: '1rem', color: 'var(--play-muted, #6B7082)', lineHeight: 1.65, marginBottom: '18px' }}>
                 {product.desc}
               </p>
             )}

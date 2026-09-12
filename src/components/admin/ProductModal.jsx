@@ -10,7 +10,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
   const [stockQuantity, setStockQuantity] = useState(25);
   const [badge, setBadge] = useState('');
   const [img, setImg] = useState('🐾');
-  const [imageUrl, setImageUrl] = useState('');
+  const [images, setImages] = useState(['']);
   const [desc, setDesc] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -25,7 +25,10 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
       setStockQuantity(initialProduct.stockQuantity ?? 25);
       setBadge(initialProduct.badge || '');
       setImg(initialProduct.img || '🐾');
-      setImageUrl(initialProduct.imageUrl || '');
+      const initialImages = Array.isArray(initialProduct.images) && initialProduct.images.length > 0
+        ? initialProduct.images
+        : (initialProduct.imageUrl ? [initialProduct.imageUrl] : ['']);
+      setImages(initialImages);
       setDesc(initialProduct.desc || '');
     } else {
       setName('');
@@ -37,7 +40,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
       setStockQuantity(25);
       setBadge('');
       setImg('🐾');
-      setImageUrl('');
+      setImages(['']);
       setDesc('');
     }
   }, [initialProduct, isOpen]);
@@ -63,7 +66,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
         stockQuantity: parseInt(stockQuantity, 10) || 0,
         badge,
         img,
-        imageUrl,
+        images: images.map(url => url.trim()).filter(Boolean),
         desc
       });
       onClose();
@@ -263,16 +266,51 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
 
           <div style={{ marginBottom: '14px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-              Product Image URL (Unsplash or direct link)
+              Product Images (Unsplash or direct links — first one is the cover photo)
             </label>
-            <input
-              type="url"
-              className="form-input"
-              style={{ width: '100%', boxSizing: 'border-box' }}
-              placeholder="https://images.unsplash.com/photo-..."
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-            />
+            {images.map((url, idx) => (
+              <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                <input
+                  type="url"
+                  className="form-input"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                  placeholder={idx === 0 ? "https://images.unsplash.com/photo-... (cover photo)" : "https://images.unsplash.com/photo-..."}
+                  value={url}
+                  onChange={(e) => {
+                    const next = [...images];
+                    next[idx] = e.target.value;
+                    setImages(next);
+                  }}
+                />
+                {images.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setImages(images.filter((_, i) => i !== idx))}
+                    aria-label="Remove image"
+                    style={{
+                      flexShrink: 0,
+                      width: '38px',
+                      border: '1px solid var(--play-border)',
+                      borderRadius: '10px',
+                      background: '#fff',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      color: '#ef4444'
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              className="btn btn-outline btn-pill"
+              onClick={() => setImages([...images, ''])}
+              style={{ fontSize: '13px', padding: '6px 14px' }}
+            >
+              + Add Another Image
+            </button>
           </div>
 
           <div style={{ marginBottom: '20px' }}>

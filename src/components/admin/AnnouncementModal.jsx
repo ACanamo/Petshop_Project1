@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useCart } from '../../context/CartContext';
 
 export default function AnnouncementModal({ isOpen, onClose, onSave, initialAnn }) {
+  const { showToast } = useCart();
   const [pill, setPill] = useState('');
   const [text, setText] = useState('');
   const [link, setLink] = useState('/shop');
   const [linkText, setLinkText] = useState('Explore deals →');
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [fieldError, setFieldError] = useState('');
 
   useEffect(() => {
     if (initialAnn) {
@@ -22,6 +25,7 @@ export default function AnnouncementModal({ isOpen, onClose, onSave, initialAnn 
       setLinkText('Explore deals →');
       setIsActive(true);
     }
+    setFieldError('');
   }, [initialAnn, isOpen]);
 
   if (!isOpen) return null;
@@ -29,9 +33,10 @@ export default function AnnouncementModal({ isOpen, onClose, onSave, initialAnn 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!text.trim()) {
-      alert("Please provide announcement message text.");
+      setFieldError("Please provide announcement message text.");
       return;
     }
+    setFieldError('');
 
     setIsSaving(true);
     try {
@@ -44,7 +49,7 @@ export default function AnnouncementModal({ isOpen, onClose, onSave, initialAnn 
       });
       onClose();
     } catch (error) {
-      alert(error.message || 'The announcement could not be saved. Please try again.');
+      showToast(error.message || 'The announcement could not be saved. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -133,9 +138,17 @@ export default function AnnouncementModal({ isOpen, onClose, onSave, initialAnn 
               style={{ width: '100%', boxSizing: 'border-box' }}
               placeholder="e.g. Get 15% off your order with code FIRSTPAW15 — Dispatched within 24 hours"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (fieldError) setFieldError('');
+              }}
               required
             />
+            {fieldError && (
+              <p style={{ margin: '6px 0 0', fontSize: '12px', fontWeight: 700, color: '#dc2626' }}>
+                {fieldError}
+              </p>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>

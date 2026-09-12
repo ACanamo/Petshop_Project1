@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isConfigured } from '../lib/supabase';
 import { DEFAULT_PRODUCTS, DEFAULT_ANNOUNCEMENTS } from '../lib/constants';
+import { readJSON, writeJSON } from '../lib/storage';
 
 const StoreContext = createContext();
 
@@ -20,24 +21,14 @@ function normalizeProductImages(product) {
 
 export function StoreProvider({ children }) {
   const [products, setProducts] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_PRODUCTS);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed.map(normalizeProductImages);
-      }
-    } catch (_) {}
+    const parsed = readJSON(STORAGE_KEY_PRODUCTS, null);
+    if (Array.isArray(parsed)) return parsed.map(normalizeProductImages);
     return DEFAULT_PRODUCTS.map(normalizeProductImages);
   });
 
   const [announcements, setAnnouncements] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_ANNOUNCEMENTS);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch (_) {}
+    const parsed = readJSON(STORAGE_KEY_ANNOUNCEMENTS, null);
+    if (Array.isArray(parsed)) return parsed;
     return DEFAULT_ANNOUNCEMENTS;
   });
 
@@ -88,7 +79,7 @@ export function StoreProvider({ children }) {
           priceHistory: Array.isArray(row.price_history) ? row.price_history : []
         }));
         setProducts(mapped);
-        localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(mapped));
+        writeJSON(STORAGE_KEY_PRODUCTS, mapped);
       }
 
       // 2. Announcements
@@ -112,7 +103,7 @@ export function StoreProvider({ children }) {
           createdAt: (row.created_at || "").split('T')[0]
         }));
         setAnnouncements(mapped);
-        localStorage.setItem(STORAGE_KEY_ANNOUNCEMENTS, JSON.stringify(mapped));
+        writeJSON(STORAGE_KEY_ANNOUNCEMENTS, mapped);
       }
     } catch (err) {
       console.warn("Error syncing with Supabase:", err);
@@ -128,12 +119,12 @@ export function StoreProvider({ children }) {
   // Save to localStorage when state changes
   const saveProductsList = (newList) => {
     setProducts(newList);
-    localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(newList));
+    writeJSON(STORAGE_KEY_PRODUCTS, newList);
   };
 
   const saveAnnouncementsList = (newList) => {
     setAnnouncements(newList);
-    localStorage.setItem(STORAGE_KEY_ANNOUNCEMENTS, JSON.stringify(newList));
+    writeJSON(STORAGE_KEY_ANNOUNCEMENTS, newList);
   };
 
   // Product Actions

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isConfigured, PRIMARY_ADMIN_EMAIL } from '../lib/supabase';
+import { readJSON, writeJSON } from '../lib/storage';
 
 const AuthContext = createContext();
 
@@ -43,20 +44,23 @@ async function buildCustomer(authUser) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     if (isConfigured()) return null;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_CUSTOMER);
-      return stored ? JSON.parse(stored) : null;
-    } catch (_) {
-      return null;
-    }
+    return readJSON(STORAGE_KEY_CUSTOMER, null);
   });
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
   const [loading, setLoading] = useState(false);
 
+  // In local-fallback mode (no Supabase configured) `user` is rehydrated
+  // straight from localStorage with no server verification, so a `role`
+  // field there is trivially spoofable via devtools. Only trust it once a
+  // real backend (with RLS) is actually in play; otherwise admin status can
+  // only come from matching the known primary admin email.
   const isAdmin = Boolean(
-    user && (user.role === 'admin' || (user.email && user.email.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase()))
+    user && (
+      (isConfigured() && user.role === 'admin') ||
+      (user.email && user.email.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase())
+    )
   );
 
   // Restore Supabase Session on mount
@@ -69,7 +73,7 @@ export function AuthProvider({ children }) {
       const customer = await buildCustomer(authUser);
       if (!active) return;
       setUser(customer);
-      localStorage.setItem(STORAGE_KEY_CUSTOMER, JSON.stringify(customer));
+      writeJSON(STORAGE_KEY_CUSTOMER, customer);
     }
 
     async function checkSession() {
@@ -134,15 +138,14 @@ export function AuthProvider({ children }) {
         const customerObj = await buildCustomer(authUser);
 
         setUser(customerObj);
-        localStorage.setItem(STORAGE_KEY_CUSTOMER, JSON.stringify(customerObj));
+        writeJSON(STORAGE_KEY_CUSTOMER, customerObj);
         setLoading(false);
         closeAuth();
         return { success: true, user: customerObj };
       }
 
       // Offline / Local fallback
-      const stored = localStorage.getItem(STORAGE_KEY_CUSTOMERS);
-      const list = stored ? JSON.parse(stored) : [];
+      const list = readJSON(STORAGE_KEY_CUSTOMERS, []);
       const query = email.trim().toLowerCase();
       const found = list.find(c => c.email?.toLowerCase() === query || c.name?.toLowerCase() === query);
 
@@ -152,7 +155,7 @@ export function AuthProvider({ children }) {
       }
 
       setUser(found);
-      localStorage.setItem(STORAGE_KEY_CUSTOMER, JSON.stringify(found));
+      writeJSON(STORAGE_KEY_CUSTOMER, found);
       setLoading(false);
       closeAuth();
       return { success: true, user: found };
@@ -204,7 +207,7 @@ export function AuthProvider({ children }) {
         };
 
         setUser(customerObj);
-        localStorage.setItem(STORAGE_KEY_CUSTOMER, JSON.stringify(customerObj));
+        writeJSON(STORAGE_KEY_CUSTOMER, customerObj);
         setLoading(false);
         closeAuth();
         return { success: true, user: customerObj };
@@ -222,11 +225,10 @@ export function AuthProvider({ children }) {
         memberTier: "VIP Paw Member"
       };
 
-      const stored = localStorage.getItem(STORAGE_KEY_CUSTOMERS);
-      const list = stored ? JSON.parse(stored) : [];
+      const list = readJSON(STORAGE_KEY_CUSTOMERS, []);
       list.unshift(customerObj);
-      localStorage.setItem(STORAGE_KEY_CUSTOMERS, JSON.stringify(list));
-      localStorage.setItem(STORAGE_KEY_CUSTOMER, JSON.stringify(customerObj));
+      writeJSON(STORAGE_KEY_CUSTOMERS, list);
+      writeJSON(STORAGE_KEY_CUSTOMER, customerObj);
 
       setUser(customerObj);
       setLoading(false);

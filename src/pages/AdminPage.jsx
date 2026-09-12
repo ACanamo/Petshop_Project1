@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStore } from '../context/StoreContext';
 import { useOrders } from '../context/OrdersContext';
+import { useCart } from '../context/CartContext';
 import MetricsRibbon from '../components/admin/MetricsRibbon';
 import ProductModal from '../components/admin/ProductModal';
 import AnnouncementModal from '../components/admin/AnnouncementModal';
@@ -35,6 +36,7 @@ export default function AdminPage() {
   } = useStore();
 
   const { orders, updateOrderStatus, deleteOrder, clearAllOrders, openInvoice } = useOrders();
+  const { showToast } = useCart();
 
   // Admin login form state
   const [adminEmail, setAdminEmail] = useState('');
@@ -185,7 +187,7 @@ export default function AdminPage() {
   };
 
   const runAdminAction = (action) => Promise.resolve(action).catch((error) => {
-    alert(error.message || 'The change could not be saved. Please try again.');
+    showToast(error.message || 'The change could not be saved. Please try again.');
   });
 
   // Filter products for table
@@ -701,7 +703,7 @@ export default function AdminPage() {
               />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '10px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
                 Supabase Anon Public API Key
               </label>
@@ -713,6 +715,10 @@ export default function AdminPage() {
                 onChange={(e) => setSbKey(e.target.value)}
               />
             </div>
+
+            <p style={{ margin: '0 0 20px', fontSize: '12px', lineHeight: 1.5, color: 'var(--play-muted)' }}>
+              ⚠️ These are saved only in this browser's local storage, so anyone with access to this device can view or change them. Only paste your project's public <strong>anon / publishable</strong> key here — never a service-role or secret key.
+            </p>
 
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button

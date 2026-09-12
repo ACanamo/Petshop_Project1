@@ -3,9 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import FilterToolbar from '../components/shop/FilterToolbar';
 import ProductCard from '../components/shop/ProductCard';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export default function ShopPage() {
-  const { products } = useStore();
+  const { products, loading } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
@@ -87,7 +88,9 @@ export default function ShopPage() {
           onReset={handleResetFilters}
         />
 
-        {filteredProducts.length === 0 ? (
+        {loading && products.length === 0 ? (
+          <LoadingSpinner label="Loading the catalog…" />
+        ) : filteredProducts.length === 0 ? (
           <div className="shop-empty-state">
             <div className="shop-empty-icon">🔎</div>
             <h3>No goodies found matching your search!</h3>

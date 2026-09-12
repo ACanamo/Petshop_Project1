@@ -4,9 +4,10 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatPeso, getOrderStatusMeta } from '../../lib/constants';
 import { useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 export default function OrderHistoryModal() {
-  const { isOrderHistoryOpen, closeOrderHistory, customerOrders, openInvoice } = useOrders();
+  const { isOrderHistoryOpen, closeOrderHistory, customerOrders, openInvoice, loadingOrders } = useOrders();
   const { addToCart, openCart, showToast } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -104,7 +105,9 @@ export default function OrderHistoryModal() {
 
         {/* Orders Content */}
         <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-          {customerOrders.length === 0 ? (
+          {loadingOrders && customerOrders.length === 0 ? (
+            <LoadingSpinner compact label="Loading your orders…" />
+          ) : customerOrders.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px' }}>
               <div style={{ fontSize: '54px', marginBottom: '12px' }}>🎾</div>
               <h4 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px', color: '#1e293b' }}>

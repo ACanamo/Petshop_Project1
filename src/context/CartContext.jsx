@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { readJSON, writeJSON } from '../lib/storage';
 
 const CartContext = createContext();
 
@@ -6,23 +7,9 @@ const STORAGE_KEY_CART = "petchup_cart";
 const STORAGE_KEY_DISCOUNT = "petchup_active_discount";
 
 export function CartProvider({ children }) {
-  const [cart, setCart] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_CART);
-      return stored ? JSON.parse(stored) : [];
-    } catch (_) {
-      return [];
-    }
-  });
+  const [cart, setCart] = useState(() => readJSON(STORAGE_KEY_CART, []));
 
-  const [activeDiscount, setActiveDiscount] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_DISCOUNT);
-      return stored ? JSON.parse(stored) : null;
-    } catch (_) {
-      return null;
-    }
-  });
+  const [activeDiscount, setActiveDiscount] = useState(() => readJSON(STORAGE_KEY_DISCOUNT, null));
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
@@ -31,12 +18,12 @@ export function CartProvider({ children }) {
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_CART, JSON.stringify(cart));
+    writeJSON(STORAGE_KEY_CART, cart);
   }, [cart]);
 
   useEffect(() => {
     if (activeDiscount) {
-      localStorage.setItem(STORAGE_KEY_DISCOUNT, JSON.stringify(activeDiscount));
+      writeJSON(STORAGE_KEY_DISCOUNT, activeDiscount);
     } else {
       localStorage.removeItem(STORAGE_KEY_DISCOUNT);
     }

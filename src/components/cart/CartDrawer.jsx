@@ -59,7 +59,7 @@ export default function CartDrawer() {
     if (res.success) {
       setPromoCodeInput('');
     } else {
-      alert(res.message);
+      showToast(res.message);
     }
   };
 

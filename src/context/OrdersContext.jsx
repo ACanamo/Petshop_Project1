@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase, isConfigured } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { readJSON, writeJSON } from '../lib/storage';
 
 const OrdersContext = createContext();
 
@@ -17,12 +18,9 @@ export function OrdersProvider({ children }) {
         localStorage.setItem(MIGRATION_KEY_CLEAN_ORDERS, "true");
         return [];
       }
-      const stored = localStorage.getItem(STORAGE_KEY_ORDERS);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(o => o.id && !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
-        }
+      const parsed = readJSON(STORAGE_KEY_ORDERS, null);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(o => o.id && !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
       }
     } catch (_) {}
     return [];
@@ -50,7 +48,7 @@ export function OrdersProvider({ children }) {
       if (Array.isArray(data)) {
         const cleanCloud = data.filter(o => !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
         setOrders(cleanCloud);
-        localStorage.setItem(STORAGE_KEY_ORDERS, JSON.stringify(cleanCloud));
+        writeJSON(STORAGE_KEY_ORDERS, cleanCloud);
       }
     } catch (err) {
       console.warn("Could not sync orders:", err);
@@ -65,7 +63,7 @@ export function OrdersProvider({ children }) {
 
   const saveOrdersList = (newList) => {
     setOrders(newList);
-    localStorage.setItem(STORAGE_KEY_ORDERS, JSON.stringify(newList));
+    writeJSON(STORAGE_KEY_ORDERS, newList);
   };
 
   const createOrder = async (orderData) => {

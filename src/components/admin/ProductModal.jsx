@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useCart } from '../../context/CartContext';
 
 export default function ProductModal({ isOpen, onClose, onSave, initialProduct }) {
+  const { showToast } = useCart();
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [category, setCategory] = useState('feeds');
@@ -13,6 +15,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
   const [images, setImages] = useState(['']);
   const [desc, setDesc] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [fieldError, setFieldError] = useState('');
 
   useEffect(() => {
     if (initialProduct) {
@@ -43,6 +46,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
       setImages(['']);
       setDesc('');
     }
+    setFieldError('');
   }, [initialProduct, isOpen]);
 
   if (!isOpen) return null;
@@ -50,9 +54,10 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim() || !price) {
-      alert("Please provide product name and price.");
+      setFieldError("Please provide product name and price.");
       return;
     }
+    setFieldError('');
 
     setIsSaving(true);
     try {
@@ -71,7 +76,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
       });
       onClose();
     } catch (error) {
-      alert(error.message || 'The product could not be saved. Please try again.');
+      showToast(error.message || 'The product could not be saved. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -136,6 +141,11 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
 
         {/* Form */}
         <form onSubmit={handleSubmit} style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+          {fieldError && (
+            <p style={{ margin: '0 0 14px', fontSize: '12px', fontWeight: 700, color: '#dc2626' }}>
+              {fieldError}
+            </p>
+          )}
           <div style={{ marginBottom: '14px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
               Product Name *
@@ -146,7 +156,10 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
               style={{ width: '100%', boxSizing: 'border-box' }}
               placeholder="e.g. Oven-Baked Salmon Biscuits"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (fieldError) setFieldError('');
+              }}
               required
             />
           </div>
@@ -199,7 +212,10 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
                 style={{ width: '100%', boxSizing: 'border-box' }}
                 placeholder="29.99"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => {
+                  setPrice(e.target.value);
+                  if (fieldError) setFieldError('');
+                }}
                 required
               />
             </div>

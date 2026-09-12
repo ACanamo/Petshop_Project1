@@ -41,6 +41,13 @@ export default function ProductCard({ product }) {
   const stars = "★".repeat(Math.round(product.rating || 5));
   const categoryText = `${product.categoryLabel || getCategoryLabel(product.category)}, ${getPetLabel(product.pet)}`;
 
+  const handleCardKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openProductView(product);
+    }
+  };
+
   return (
     <article
       className={`product-card ${!product.inStock ? 'is-out-of-stock' : ''}`}
@@ -49,6 +56,10 @@ export default function ProductCard({ product }) {
       data-pet={product.pet}
       data-price={product.price}
       onClick={() => openProductView(product)}
+      onKeyDown={handleCardKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`View details for ${product.name}`}
       style={{ cursor: 'pointer' }}
     >
       {/* Product Badge */}

@@ -38,10 +38,10 @@ export default function InvoiceModal() {
       zIndex: 2200
     }}>
       <div className="invoice-modal-card" role="dialog" aria-modal="true" aria-labelledby="invoice-title" style={{
-        background: '#fff',
-        borderRadius: '24px',
-        border: '3px solid #1e293b',
-        boxShadow: '6px 6px 0px #1e293b',
+        background: 'var(--play-cream, #FFFDF9)',
+        borderRadius: '28px',
+        border: 'none',
+        boxShadow: 'none',
         width: '100%',
         maxWidth: '560px',
         maxHeight: '90vh',
@@ -53,17 +53,16 @@ export default function InvoiceModal() {
         {/* Invoice Modal Header */}
         <div style={{
           padding: '20px 24px',
-          background: 'var(--color-yellow, #ffd166)',
-          borderBottom: '3px solid #1e293b',
+          background: 'linear-gradient(135deg, var(--play-orange, #FF6B35) 0%, #FF834E 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
           <div>
-            <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1e293b' }}>
+            <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.85)' }}>
               OFFICIAL RECEIPT & INVOICE
             </span>
-            <h3 id="invoice-title" style={{ margin: '2px 0 0', fontSize: '20px', fontWeight: 800, color: '#1e293b' }}>
+            <h3 id="invoice-title" style={{ margin: '2px 0 0', fontSize: '20px', fontWeight: 800, color: '#fff' }}>
               🐾 PETCHUP STORE
             </h3>
           </div>
@@ -71,14 +70,15 @@ export default function InvoiceModal() {
             type="button"
             onClick={closeInvoice}
             style={{
-              background: '#fff',
-              border: '2px solid #1e293b',
+              background: 'rgba(255, 255, 255, 0.28)',
+              border: 'none',
               borderRadius: '50%',
-              width: '44px',
-              height: '44px',
+              width: '40px',
+              height: '40px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              color: '#fff',
               fontWeight: 800,
               cursor: 'pointer'
             }}
@@ -95,16 +95,16 @@ export default function InvoiceModal() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-start',
-            borderBottom: '2px dashed #cbd5e1',
+            borderBottom: '2px dashed rgba(45, 49, 66, 0.15)',
             paddingBottom: '16px',
             marginBottom: '16px'
           }}>
             <div>
               <div style={{ fontSize: '13px', color: '#64748b' }}>Invoice For:</div>
-              <strong style={{ fontSize: '15px', color: '#1e293b' }}>{order.customer_name || "Pet Parent"}</strong>
+              <strong style={{ fontSize: '15px', color: 'var(--play-charcoal, #2D3142)' }}>{order.customer_name || "Pet Parent"}</strong>
               <div style={{ fontSize: '12px', color: '#64748b' }}>{order.customer_email || "N/A"}</div>
               {order.pet_name && (
-                <div style={{ fontSize: '12px', color: 'var(--color-coral)', marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--play-orange, #FF6B35)', marginTop: '2px' }}>
                   Fur Baby: 🐶 {order.pet_name}
                 </div>
               )}
@@ -112,7 +112,7 @@ export default function InvoiceModal() {
 
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '13px', color: '#64748b' }}>Order ID:</div>
-              <strong style={{ fontSize: '14px', color: '#1e293b' }}>#{order.id}</strong>
+              <strong style={{ fontSize: '14px', color: 'var(--play-charcoal, #2D3142)' }}>#{order.id}</strong>
               <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                 {new Date(order.created_at).toLocaleDateString()}
               </div>
@@ -124,7 +124,7 @@ export default function InvoiceModal() {
                   padding: '2px 8px',
                   borderRadius: '999px',
                   background: '#e2e8f0',
-                  color: '#1e293b'
+                  color: 'var(--play-charcoal, #2D3142)'
                 }}>
                   {statusMeta.emoji} {statusMeta.label}
                 </span>
@@ -135,7 +135,7 @@ export default function InvoiceModal() {
           {/* Line Items Table */}
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #1e293b', textAlign: 'left', fontSize: '12px', color: '#64748b' }}>
+              <tr style={{ borderBottom: '2px solid rgba(45, 49, 66, 0.15)', textAlign: 'left', fontSize: '12px', color: '#64748b' }}>
                 <th style={{ padding: '8px 4px' }}>Item</th>
                 <th style={{ padding: '8px 4px', textAlign: 'center' }}>Qty</th>
                 <th style={{ padding: '8px 4px', textAlign: 'right' }}>Price</th>
@@ -145,7 +145,7 @@ export default function InvoiceModal() {
             <tbody>
               {(order.items || []).map((it, idx) => (
                 <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}>
-                  <td style={{ padding: '10px 4px', color: '#1e293b' }}>
+                  <td style={{ padding: '10px 4px', color: 'var(--play-charcoal, #2D3142)' }}>
                     <span style={{ marginRight: '6px' }}>{it.img || "🐾"}</span>
                     <strong>{it.name}</strong>
                   </td>
@@ -155,7 +155,7 @@ export default function InvoiceModal() {
                   <td style={{ padding: '10px 4px', textAlign: 'right', color: '#64748b' }}>
                     {formatPeso(it.price || 0)}
                   </td>
-                  <td style={{ padding: '10px 4px', textAlign: 'right', fontWeight: 700, color: '#1e293b' }}>
+                  <td style={{ padding: '10px 4px', textAlign: 'right', fontWeight: 700, color: 'var(--play-charcoal, #2D3142)' }}>
                     {formatPeso((it.price || 0) * (it.qty || 1))}
                   </td>
                 </tr>
@@ -166,8 +166,8 @@ export default function InvoiceModal() {
           {/* Calculations Breakdown */}
           <div style={{
             background: '#f8fafc',
-            border: '2px solid #1e293b',
-            borderRadius: '12px',
+            border: '1px solid rgba(45, 49, 66, 0.1)',
+            borderRadius: '16px',
             padding: '16px',
             display: 'flex',
             flexDirection: 'column',
@@ -190,12 +190,12 @@ export default function InvoiceModal() {
               display: 'flex',
               justifyContent: 'space-between',
               paddingTop: '8px',
-              borderTop: '2px dashed #cbd5e1',
+              borderTop: '2px dashed rgba(45, 49, 66, 0.15)',
               fontSize: '16px',
-              color: '#1e293b'
+              color: 'var(--play-charcoal, #2D3142)'
             }}>
               <strong>Grand Total (PHP):</strong>
-              <strong style={{ color: 'var(--color-coral, #e63946)' }}>{formatPeso(order.total)}</strong>
+              <strong style={{ color: 'var(--play-orange, #FF6B35)' }}>{formatPeso(order.total)}</strong>
             </div>
           </div>
         </div>
@@ -204,7 +204,7 @@ export default function InvoiceModal() {
         <div style={{
           padding: '16px 24px',
           background: '#f8fafc',
-          borderTop: '2px solid #1e293b',
+          borderTop: '1px solid rgba(45, 49, 66, 0.1)',
           display: 'flex',
           justifyContent: 'flex-end',
           gap: '12px'

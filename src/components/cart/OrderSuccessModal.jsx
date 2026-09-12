@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
+import { useOrders } from '../../context/OrdersContext';
 
 export default function OrderSuccessModal({ order, onClose }) {
+  const { openInvoice } = useOrders();
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') onClose();
@@ -84,6 +86,30 @@ export default function OrderSuccessModal({ order, onClose }) {
             style={{ width: '100%', boxSizing: 'border-box', border: 'none', cursor: 'pointer' }}
           >
             Awesome, Thanks! 🐾
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              openInvoice(order);
+              onClose();
+            }}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              marginTop: '12px',
+              padding: '10px',
+              background: 'none',
+              border: 'none',
+              color: 'var(--play-orange, #FF6B35)',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              textUnderlineOffset: '3px'
+            }}
+          >
+            🧾 View Sale Invoice
           </button>
         </div>
       </div>

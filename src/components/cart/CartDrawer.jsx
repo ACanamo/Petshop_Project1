@@ -24,7 +24,7 @@ export default function CartDrawer() {
   } = useCart();
 
   const { createOrder } = useOrders();
-  const { user } = useAuth();
+  const { user, openAuth } = useAuth();
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
@@ -66,6 +66,13 @@ export default function CartDrawer() {
   const handleCheckout = async () => {
     if (cart.length === 0) {
       showToast("Add some goodies to your cart first!");
+      return;
+    }
+
+    if (!user) {
+      showToast("Please sign up or log in to complete your checkout!");
+      closeCart();
+      openAuth('register');
       return;
     }
 

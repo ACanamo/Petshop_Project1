@@ -4,6 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { useOrders } from '../../context/OrdersContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatPeso, normalizeEmoji } from '../../lib/constants';
+import OrderSuccessModal from './OrderSuccessModal';
 
 export default function CartDrawer() {
   const {
@@ -26,6 +27,7 @@ export default function CartDrawer() {
   const { user } = useAuth();
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmedOrder, setConfirmedOrder] = useState(null);
 
   // Close on Escape key
   useEffect(() => {
@@ -93,7 +95,7 @@ export default function CartDrawer() {
         setIsSubmitting(false);
         clearCart();
         closeCart();
-        alert(`🎉 Order Confirmed! Thank you for shopping at PETCHUP!\nOrder ID: #${order.id}\nYour fur baby will love it! 🐾`);
+        setConfirmedOrder(order);
       }, 500);
     } catch (err) {
       setIsSubmitting(false);
@@ -101,10 +103,16 @@ export default function CartDrawer() {
     }
   };
 
-  if (!isCartOpen) return null;
+  if (!isCartOpen && !confirmedOrder) return null;
 
   return (
     <>
+      {confirmedOrder && (
+        <OrderSuccessModal order={confirmedOrder} onClose={() => setConfirmedOrder(null)} />
+      )}
+
+      {isCartOpen && (
+        <>
       <div
         className="cart-backdrop is-open"
         id="cart-backdrop"
@@ -277,6 +285,8 @@ export default function CartDrawer() {
           </div>
         )}
       </aside>
+        </>
+      )}
     </>
   );
 }

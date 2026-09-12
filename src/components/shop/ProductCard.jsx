@@ -34,7 +34,7 @@ export default function ProductCard({ product }) {
     });
   };
 
-  const hasOriginalPrice = product.originalPrice && product.originalPrice > product.price;
+  const hasOriginalPrice = Boolean(product.originalPrice) && product.originalPrice > product.price;
   const stars = "★".repeat(Math.round(product.rating || 5));
   const categoryText = `${product.categoryLabel || getCategoryLabel(product.category)}, ${getPetLabel(product.pet)}`;
 

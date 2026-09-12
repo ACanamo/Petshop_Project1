@@ -1249,6 +1249,11 @@ p {
 }
 
 .product-card {
+  /* min-width: 0 overrides the grid item default of min-width: auto —
+     without it, a track can't shrink below its content's natural width
+     (e.g. an unbreakable price/button), so a 2-column mobile grid
+     overflows the viewport instead of the columns shrinking to fit. */
+  min-width: 0;
   background-color: #FFFFFF;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

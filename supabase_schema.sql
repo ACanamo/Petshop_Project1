@@ -558,6 +558,54 @@ CREATE TRIGGER trg_validate_order_totals
 REVOKE EXECUTE ON FUNCTION public.validate_order_totals() FROM PUBLIC, anon, authenticated;
 
 -- ==============================================================================
+-- 13. ORDER-SPAM RATE LIMITING
+-- Caps how many orders a single customer (or guest, by email) can place in a
+-- short window. Complements validate_order_totals(): that trigger stops
+-- fake PRICES, this one stops sheer VOLUME. Since the anon key is public,
+-- nothing else currently prevents a script from looping order inserts.
+-- Not a complete defense against a determined attacker (Postgres triggers
+-- have no visibility into the caller's IP, so many fake guest emails or
+-- throwaway accounts can still get around this) — pair with a checkout
+-- CAPTCHA for stronger protection if abuse becomes a real problem.
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.check_order_rate_limit()
+RETURNS TRIGGER AS $$
+DECLARE
+  recent_count INTEGER;
+  window_minutes CONSTANT INTEGER := 5;
+  max_orders CONSTANT INTEGER := 5;
+BEGIN
+  IF NEW.customer_id IS NOT NULL THEN
+    SELECT COUNT(*) INTO recent_count
+    FROM public.orders
+    WHERE customer_id = NEW.customer_id
+      AND created_at > NOW() - (window_minutes || ' minutes')::INTERVAL;
+  ELSE
+    SELECT COUNT(*) INTO recent_count
+    FROM public.orders
+    WHERE customer_id IS NULL
+      AND LOWER(COALESCE(customer_email, '')) = LOWER(COALESCE(NEW.customer_email, ''))
+      AND created_at > NOW() - (window_minutes || ' minutes')::INTERVAL;
+  END IF;
+
+  IF recent_count >= max_orders THEN
+    RAISE EXCEPTION 'Too many orders placed recently. Please wait a few minutes and try again.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+   SECURITY DEFINER
+   SET search_path = '';
+
+DROP TRIGGER IF EXISTS trg_check_order_rate_limit ON public.orders;
+CREATE TRIGGER trg_check_order_rate_limit
+  BEFORE INSERT ON public.orders
+  FOR EACH ROW EXECUTE PROCEDURE public.check_order_rate_limit();
+
+REVOKE EXECUTE ON FUNCTION public.check_order_rate_limit() FROM PUBLIC, anon, authenticated;
+
+-- ==============================================================================
 -- NOTE: auth_leaked_password_protection warning must be fixed in Supabase Dashboard:
 --   Authentication -> Providers -> Email -> "Enable Leaked Password Protection"
 --   (toggle it ON). This cannot be changed via SQL.

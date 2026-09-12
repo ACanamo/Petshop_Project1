@@ -96,7 +96,7 @@ export default function CartDrawer() {
       }, 500);
     } catch (err) {
       setIsSubmitting(false);
-      showToast("Could not complete checkout. Please try again.");
+      showToast(err.message || "Could not complete checkout. Please try again.");
     }
   };
 

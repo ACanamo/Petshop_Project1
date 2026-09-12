@@ -13,6 +13,7 @@ import CartDrawer from './components/cart/CartDrawer';
 import AuthModal from './components/auth/AuthModal';
 import OrderHistoryModal from './components/orders/OrderHistoryModal';
 import InvoiceModal from './components/orders/InvoiceModal';
+import ProductQuickViewModal from './components/shop/ProductQuickViewModal';
 
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
@@ -73,6 +74,7 @@ export default function App() {
                 <AuthModal />
                 <OrderHistoryModal />
                 <InvoiceModal />
+                <ProductQuickViewModal />
                 <Toast />
               </div>
             </BrowserRouter>

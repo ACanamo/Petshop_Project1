@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useCart } from '../../context/CartContext';
+import { useStore } from '../../context/StoreContext';
 import { formatPeso, getBadgeClass, getCategoryTint, getPetLabel, getCategoryLabel, normalizeEmoji } from '../../lib/constants';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
+  const { openProductView } = useStore();
   const [btnText, setBtnText] = useState("Add to Cart 🛒");
   const [imgError, setImgError] = useState(false);
   const [isPopping, setIsPopping] = useState(false);
@@ -15,7 +17,8 @@ export default function ProductCard({ product }) {
     window.clearTimeout(popTimer.current);
   }, []);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (event) => {
+    event.stopPropagation();
     if (!product.inStock) return;
     addToCart(product, 1);
 
@@ -45,6 +48,8 @@ export default function ProductCard({ product }) {
       data-category={product.category}
       data-pet={product.pet}
       data-price={product.price}
+      onClick={() => openProductView(product)}
+      style={{ cursor: 'pointer' }}
     >
       {/* Product Badge */}
       {product.badge && (

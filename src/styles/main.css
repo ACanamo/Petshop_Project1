@@ -9708,3 +9708,15 @@ textarea:focus-visible,
     display: none;
   }
 }
+
+/* Product Quick View modal — stack the image/info columns on narrow
+   screens instead of squeezing them side by side. */
+@media (max-width: 640px) {
+  .quick-view-body {
+    flex-direction: column;
+  }
+
+  .quick-view-image-col {
+    flex: 0 0 auto;
+  }
+}

@@ -31,6 +31,10 @@ export function StoreProvider({ children }) {
   });
 
   const [loading, setLoading] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  const openProductView = (product) => setSelectedProduct(product);
+  const closeProductView = () => setSelectedProduct(null);
 
   // Sync with Supabase Cloud
   const syncFromSupabase = async () => {
@@ -383,7 +387,10 @@ export function StoreProvider({ children }) {
       updateAnnouncement,
       toggleAnnouncementActive,
       deleteAnnouncement,
-      syncFromSupabase
+      syncFromSupabase,
+      selectedProduct,
+      openProductView,
+      closeProductView
     }}>
       {children}
     </StoreContext.Provider>

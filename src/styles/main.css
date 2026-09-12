@@ -152,6 +152,10 @@
 
 .cart-drawer-header {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 20px 24px;
   background: var(--color-canvas, #fbf9f4);
   border-bottom: 2px solid var(--color-border, #e5dcd0);
@@ -760,15 +764,17 @@ p {
 .cart-close-btn {
   background: none;
   border: none;
-  font-size: 1.8rem;
+  border-radius: 50%;
+  font-size: 1.5rem;
   line-height: 1;
   color: var(--color-ink-muted);
   cursor: pointer;
   padding: 4px;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 .cart-close-btn:hover {
   color: var(--color-ink);
+  background-color: rgba(23, 20, 18, 0.06);
 }
 
 .cart-items {
@@ -3875,8 +3881,8 @@ p {
 
 .cart-promo-input {
   flex: 1;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
+  padding: 9px 16px;
+  border-radius: 999px;
   border: 1px solid var(--color-border);
   font-family: var(--font-body);
   font-size: 0.85rem;
@@ -3891,9 +3897,9 @@ p {
 }
 
 .cart-promo-btn {
-  padding: 8px 14px;
+  padding: 8px 18px;
   font-size: 0.84rem;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   font-weight: 600;
 }
 

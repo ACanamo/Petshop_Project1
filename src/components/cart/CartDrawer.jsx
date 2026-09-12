@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useOrders } from '../../context/OrdersContext';
 import { useAuth } from '../../context/AuthContext';
@@ -175,6 +176,14 @@ export default function CartDrawer() {
               <p className="empty-sub">
                 Add some crunchy feeds, squeaky toys, or cozy leashes to get started.
               </p>
+              <Link
+                to="/shop"
+                onClick={closeCart}
+                className="btn btn-primary btn-pill"
+                style={{ marginTop: '18px', display: 'inline-flex' }}
+              >
+                Continue Shopping 🐾
+              </Link>
             </div>
           ) : (
             cart.map((item, index) => (

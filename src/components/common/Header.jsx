@@ -131,19 +131,19 @@ export default function Header() {
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
                     right: 0,
-                    background: '#fff',
-                    border: '3px solid #1e293b',
-                    borderRadius: '16px',
-                    boxShadow: '4px 4px 0px #1e293b',
-                    padding: '12px',
+                    background: 'var(--play-cream, #FFFDF9)',
+                    border: '1px solid rgba(45, 49, 66, 0.08)',
+                    borderRadius: '22px',
+                    boxShadow: '0 20px 45px rgba(45, 49, 66, 0.16)',
+                    padding: '14px',
                     minWidth: '220px',
                     zIndex: 1000
                   }}>
-                    <div className="user-dropdown-header" style={{ paddingBottom: '8px', borderBottom: '2px dashed #e2e8f0', marginBottom: '8px' }}>
-                      <strong style={{ display: 'block', fontSize: '14px', color: '#1e293b' }}>{user.name}</strong>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>{user.email}</span>
+                    <div className="user-dropdown-header" style={{ paddingBottom: '10px', borderBottom: '1.5px dashed rgba(45, 49, 66, 0.15)', marginBottom: '8px' }}>
+                      <strong style={{ display: 'block', fontSize: '14px', color: 'var(--play-charcoal, #2D3142)' }}>{user.name}</strong>
+                      <span style={{ fontSize: '12px', color: 'var(--play-muted, #6B7082)' }}>{user.email}</span>
                       {user.petName && (
-                        <div style={{ fontSize: '11px', marginTop: '4px', color: 'var(--color-coral)' }}>
+                        <div style={{ fontSize: '11px', marginTop: '4px', color: 'var(--play-orange, #FF6B35)' }}>
                           Pet: {user.petEmoji || "🐶"} {user.petName}
                         </div>
                       )}
@@ -161,12 +161,13 @@ export default function Header() {
                         alignItems: 'center',
                         gap: '8px',
                         width: '100%',
-                        padding: '8px 10px',
+                        padding: '9px 10px',
                         background: 'none',
                         border: 'none',
-                        borderRadius: '8px',
+                        borderRadius: '12px',
                         fontWeight: 600,
                         fontSize: '13px',
+                        color: 'var(--play-charcoal, #2D3142)',
                         cursor: 'pointer',
                         textAlign: 'left'
                       }}
@@ -183,8 +184,8 @@ export default function Header() {
                           alignItems: 'center',
                           gap: '8px',
                           width: '100%',
-                          padding: '8px 10px',
-                          borderRadius: '8px',
+                          padding: '9px 10px',
+                          borderRadius: '12px',
                           fontWeight: 600,
                           fontSize: '13px',
                           color: 'var(--color-purple)',
@@ -207,17 +208,17 @@ export default function Header() {
                         alignItems: 'center',
                         gap: '8px',
                         width: '100%',
-                        padding: '8px 10px',
+                        padding: '9px 10px',
                         background: 'none',
                         border: 'none',
-                        borderRadius: '8px',
+                        borderRadius: '12px',
                         fontWeight: 600,
                         fontSize: '13px',
                         color: '#ef4444',
                         cursor: 'pointer',
                         textAlign: 'left',
                         marginTop: '4px',
-                        borderTop: '1px solid #f1f5f9'
+                        borderTop: '1px solid rgba(45, 49, 66, 0.08)'
                       }}
                     >
                       🚪 Sign Out

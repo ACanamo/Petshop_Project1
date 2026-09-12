@@ -1,5 +1,5 @@
 import React, { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useOrders } from '../../context/OrdersContext';
@@ -11,6 +11,7 @@ export default function Header() {
   const { user, isAdmin, openAuth, logout } = useAuth();
   const { openOrderHistory } = useOrders();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Playful bump on the cart icon whenever an item is added.
   const [cartBump, setCartBump] = useState(false);
@@ -199,9 +200,10 @@ export default function Header() {
                     <button
                       type="button"
                       className="dropdown-item-btn"
-                      onClick={() => {
+                      onClick={async () => {
                         setUserDropdownOpen(false);
-                        logout();
+                        await logout();
+                        navigate('/');
                       }}
                       style={{
                         display: 'flex',
@@ -344,9 +346,10 @@ export default function Header() {
                   type="button"
                   className="btn btn-outline btn-pill btn-full"
                   style={{ marginTop: '8px', color: '#ef4444' }}
-                  onClick={() => {
+                  onClick={async () => {
                     closeMobileNav();
-                    logout();
+                    await logout();
+                    navigate('/');
                   }}
                 >
                   🚪 Sign Out

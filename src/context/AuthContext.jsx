@@ -1,11 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isConfigured, PRIMARY_ADMIN_EMAIL } from '../lib/supabase';
 import { readJSON, writeJSON } from '../lib/storage';
+import { getPasswordStrength } from '../lib/passwordStrength';
 
 const AuthContext = createContext();
 
 const STORAGE_KEY_CUSTOMER = "petchup_current_customer";
 const STORAGE_KEY_CUSTOMERS = "petchup_registered_customers";
+const LOGIN_ATTEMPTS_KEY = "petchup_login_attempts";
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_MS = 60_000;
+const MIN_PASSWORD_SCORE = 2;
 
 async function buildCustomer(authUser) {
   const email = authUser.email || "";
@@ -39,6 +44,39 @@ async function buildCustomer(authUser) {
     petEmoji: profile?.pet_emoji || userMeta.pet_emoji || "🐶",
     memberTier: profile?.member_tier || "VIP Paw Member"
   };
+}
+
+// Client-side login-attempt lockout, keyed by lowercased email. This is a
+// low-effort deterrent (a cleared localStorage resets it), not real
+// server-side rate limiting — but it applies uniformly wherever login() is
+// called, including the separate admin login form in AdminPage.jsx.
+function getLoginLockout(emailKey) {
+  const attempts = readJSON(LOGIN_ATTEMPTS_KEY, {});
+  const entry = attempts[emailKey];
+  if (entry && entry.lockedUntil && entry.lockedUntil > Date.now()) {
+    return Math.ceil((entry.lockedUntil - Date.now()) / 1000);
+  }
+  return 0;
+}
+
+function recordFailedLogin(emailKey) {
+  const attempts = readJSON(LOGIN_ATTEMPTS_KEY, {});
+  const entry = attempts[emailKey] || { count: 0, lockedUntil: 0 };
+  entry.count += 1;
+  if (entry.count >= MAX_LOGIN_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + LOCKOUT_MS;
+    entry.count = 0;
+  }
+  attempts[emailKey] = entry;
+  writeJSON(LOGIN_ATTEMPTS_KEY, attempts);
+}
+
+function clearLoginAttempts(emailKey) {
+  const attempts = readJSON(LOGIN_ATTEMPTS_KEY, {});
+  if (attempts[emailKey]) {
+    delete attempts[emailKey];
+    writeJSON(LOGIN_ATTEMPTS_KEY, attempts);
+  }
 }
 
 export function AuthProvider({ children }) {
@@ -117,6 +155,12 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
+    const emailKey = email.trim().toLowerCase();
+    const lockedSeconds = getLoginLockout(emailKey);
+    if (lockedSeconds > 0) {
+      return { success: false, error: `Too many failed attempts. Try again in ${lockedSeconds}s.` };
+    }
+
     setLoading(true);
     try {
       if (isConfigured() && email.includes('@')) {
@@ -126,17 +170,20 @@ export function AuthProvider({ children }) {
         });
 
         if (error) {
+          recordFailedLogin(emailKey);
           setLoading(false);
           return { success: false, error: error.message };
         }
 
         const authUser = data.user;
         if (!authUser) {
+          recordFailedLogin(emailKey);
           setLoading(false);
           return { success: false, error: "No user was returned after sign in." };
         }
         const customerObj = await buildCustomer(authUser);
 
+        clearLoginAttempts(emailKey);
         setUser(customerObj);
         writeJSON(STORAGE_KEY_CUSTOMER, customerObj);
         setLoading(false);
@@ -150,22 +197,32 @@ export function AuthProvider({ children }) {
       const found = list.find(c => c.email?.toLowerCase() === query || c.name?.toLowerCase() === query);
 
       if (!found) {
+        recordFailedLogin(emailKey);
         setLoading(false);
         return { success: false, error: "Account not found. Please create an account!" };
       }
 
+      clearLoginAttempts(emailKey);
       setUser(found);
       writeJSON(STORAGE_KEY_CUSTOMER, found);
       setLoading(false);
       closeAuth();
       return { success: true, user: found };
     } catch (err) {
+      recordFailedLogin(emailKey);
       setLoading(false);
       return { success: false, error: err.message || "Failed to sign in" };
     }
   };
 
   const register = async ({ name, email, password, petName, petType }) => {
+    // Defense-in-depth: AuthModal already blocks submission of a weak
+    // password via the strength meter, but guard here too in case
+    // register() is ever called some other way.
+    if (getPasswordStrength(password).score < MIN_PASSWORD_SCORE) {
+      return { success: false, error: "Please choose a stronger password (8+ characters, with a number or mixed case)." };
+    }
+
     setLoading(true);
     try {
       const petEmoji = petType === 'cat' ? '🐱' : petType === 'bird' ? '🦜' : '🐶';
@@ -250,6 +307,55 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(STORAGE_KEY_CUSTOMER);
   };
 
+  // Sends a password-reset email. Always resolves success-shaped (when
+  // Supabase is configured) regardless of whether the email is registered,
+  // so the UI can't be used to enumerate accounts.
+  const resetPassword = async (email) => {
+    if (!isConfigured()) {
+      return { success: false, error: "Password reset needs an online account — this demo is running in offline mode." };
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin + '/reset-password'
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message || "Could not send the reset email." };
+    }
+  };
+
+  // Used by ResetPasswordPage once Supabase has established a recovery
+  // session from the emailed link.
+  const updatePassword = async (newPassword) => {
+    if (!isConfigured()) {
+      return { success: false, error: "Password reset needs an online account — this demo is running in offline mode." };
+    }
+    if (getPasswordStrength(newPassword).score < MIN_PASSWORD_SCORE) {
+      return { success: false, error: "Please choose a stronger password (8+ characters, with a number or mixed case)." };
+    }
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword.trim() });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message || "Could not update the password." };
+    }
+  };
+
+  const resendConfirmation = async (email) => {
+    if (!isConfigured()) {
+      return { success: false, error: "Email confirmation isn't used in offline mode." };
+    }
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim().toLowerCase() });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message || "Could not resend the confirmation email." };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -261,7 +367,10 @@ export function AuthProvider({ children }) {
       closeAuth,
       login,
       register,
-      logout
+      logout,
+      resetPassword,
+      updatePassword,
+      resendConfirmation
     }}>
       {children}
     </AuthContext.Provider>

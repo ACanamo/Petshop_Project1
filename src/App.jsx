@@ -14,9 +14,11 @@ import AuthModal from './components/auth/AuthModal';
 import OrderHistoryModal from './components/orders/OrderHistoryModal';
 import InvoiceModal from './components/orders/InvoiceModal';
 import ProductQuickViewModal from './components/shop/ProductQuickViewModal';
+import IdleSessionWatcher from './components/common/IdleSessionWatcher';
 
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 
@@ -53,6 +55,7 @@ export default function App() {
             <BrowserRouter>
               <div className="app-layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
                 <RouteEffects />
+                <IdleSessionWatcher />
                 <TopBanner />
                 <Header />
 
@@ -61,6 +64,7 @@ export default function App() {
                     <Routes>
                       <Route path="/" element={<HomePage />} />
                       <Route path="/shop" element={<ShopPage />} />
+                      <Route path="/reset-password" element={<ResetPasswordPage />} />
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>

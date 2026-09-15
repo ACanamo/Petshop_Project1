@@ -1,9 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import PasswordInput from './PasswordInput';
+import { getPasswordStrength } from '../../lib/passwordStrength';
+
+const MIN_PASSWORD_SCORE = 2;
+const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function AuthModal() {
-  const { isAuthOpen, authMode, closeAuth, login, register, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState(authMode);
+  const { isAuthOpen, authMode, closeAuth, login, register, loading, resetPassword, resendConfirmation } = useAuth();
+  const [activeTab, setActiveTab] = useState(authMode); // 'login' | 'register' | 'forgot'
 
   // Sign In state
   const [loginEmail, setLoginEmail] = useState('');
@@ -15,9 +20,22 @@ export default function AuthModal() {
   const [regPassword, setRegPassword] = useState('');
   const [regPetName, setRegPetName] = useState('');
   const [regPetType, setRegPetType] = useState('dog');
+  const [registeredEmail, setRegisteredEmail] = useState('');
+
+  // Forgot password state
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+
+  // Resend confirmation cooldown
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const resendTimerRef = useRef(null);
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [requiresEmailConfirmation, setRequiresEmailConfirmation] = useState(false);
+
+  const passwordStrength = getPasswordStrength(regPassword);
+  const isPasswordStrongEnough = passwordStrength.score >= MIN_PASSWORD_SCORE;
 
   useEffect(() => {
     if (!isAuthOpen) return;
@@ -36,6 +54,11 @@ export default function AuthModal() {
     setRegPassword('');
     setRegPetName('');
     setRegPetType('dog');
+    setForgotEmail('');
+    setRequiresEmailConfirmation(false);
+    setRegisteredEmail('');
+    window.clearInterval(resendTimerRef.current);
+    setResendCooldown(0);
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') closeAuth();
@@ -62,8 +85,8 @@ export default function AuthModal() {
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (regPassword.length < 8) {
-      setErrorMessage("Password must be at least 8 characters long.");
+    if (!isPasswordStrongEnough) {
+      setErrorMessage("Please choose a stronger password (8+ characters, with a number or mixed case).");
       return;
     }
 
@@ -81,8 +104,49 @@ export default function AuthModal() {
       setSuccessMessage(res.requiresEmailConfirmation
         ? "Check your email to confirm your account, then sign in."
         : "Account created successfully! Welcome to Petchup!");
-      if (res.requiresEmailConfirmation) setActiveTab('login');
+      if (res.requiresEmailConfirmation) {
+        setRequiresEmailConfirmation(true);
+        setRegisteredEmail(regEmail);
+        setActiveTab('login');
+      }
     }
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+    setForgotSubmitting(true);
+
+    const res = await resetPassword(forgotEmail);
+    setForgotSubmitting(false);
+
+    if (!res.success) {
+      setErrorMessage(res.error || "Could not send the reset email.");
+    } else {
+      setSuccessMessage("If an account exists for that email, a reset link is on its way.");
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (resendCooldown > 0 || !registeredEmail) return;
+    const res = await resendConfirmation(registeredEmail);
+    if (!res.success) {
+      setErrorMessage(res.error || "Could not resend the confirmation email.");
+      return;
+    }
+    setSuccessMessage("Confirmation email resent — check your inbox.");
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    window.clearInterval(resendTimerRef.current);
+    resendTimerRef.current = window.setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) {
+          window.clearInterval(resendTimerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   return (
@@ -144,15 +208,18 @@ export default function AuthModal() {
         }}>
           <div style={{ fontSize: '36px', marginBottom: '6px' }}>🐾</div>
           <h3 id="auth-modal-title" style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#fff' }}>
-            {activeTab === 'login' ? 'Welcome Back!' : 'Join The Fur Family!'}
+            {activeTab === 'login' ? 'Welcome Back!' : activeTab === 'register' ? 'Join The Fur Family!' : 'Reset Your Password'}
           </h3>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
             {activeTab === 'login'
               ? 'Sign in to access your saved pets & order history'
-              : 'Create an account & get an instant 20% OFF coupon'}
+              : activeTab === 'register'
+                ? 'Create an account & get an instant 20% OFF coupon'
+                : "We'll email you a link to get back in"}
           </p>
 
           {/* Tab Switcher */}
+          {activeTab !== 'forgot' && (
           <div style={{
             display: 'flex',
             gap: '4px',
@@ -207,6 +274,7 @@ export default function AuthModal() {
               Create Account
             </button>
           </div>
+          )}
         </div>
 
         {/* Modal Body */}
@@ -241,6 +309,31 @@ export default function AuthModal() {
             </div>
           )}
 
+          {requiresEmailConfirmation && activeTab === 'login' && (
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={resendCooldown > 0}
+              style={{
+                display: 'block',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                marginBottom: '16px',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: resendCooldown > 0 ? 'var(--play-muted, #6B7082)' : 'var(--play-orange, #FF6B35)',
+                cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              {resendCooldown > 0
+                ? `Didn't get the email? Resend in ${resendCooldown}s`
+                : "Didn't get the email? Resend confirmation"}
+            </button>
+          )}
+
           {activeTab === 'login' ? (
             <form onSubmit={handleLoginSubmit}>
               <div style={{ marginBottom: '14px' }}>
@@ -258,20 +351,40 @@ export default function AuthModal() {
                 />
               </div>
 
-              <div style={{ marginBottom: '18px' }}>
+              <div style={{ marginBottom: '10px' }}>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
                   Password
                 </label>
-                <input
-                  type="password"
-                  className="form-input"
-                  style={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
+                <PasswordInput
                   placeholder="••••••••"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
+                  inputStyle={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
                 />
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('forgot');
+                  setErrorMessage('');
+                  setSuccessMessage('');
+                }}
+                style={{
+                  display: 'block',
+                  marginBottom: '18px',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: 'var(--play-orange, #FF6B35)',
+                  cursor: 'pointer'
+                }}
+              >
+                Forgot password?
+              </button>
 
               <button
                 type="submit"
@@ -282,7 +395,7 @@ export default function AuthModal() {
                 {loading ? "Signing In..." : "Sign In 🐾"}
               </button>
             </form>
-          ) : (
+          ) : activeTab === 'register' ? (
             <form onSubmit={handleRegisterSubmit}>
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>
@@ -318,16 +431,35 @@ export default function AuthModal() {
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>
                   Password (8+ characters)
                 </label>
-                <input
-                  type="password"
-                  className="form-input"
-                  style={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
+                <PasswordInput
                   placeholder="••••••••"
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
                   minLength={8}
                   required
+                  inputStyle={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
                 />
+                {regPassword && (
+                  <div style={{ marginTop: '6px' }}>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {[0, 1, 2, 3].map(i => (
+                        <span
+                          key={i}
+                          style={{
+                            flex: 1,
+                            height: '4px',
+                            borderRadius: '2px',
+                            background: i < passwordStrength.score ? passwordStrength.color : 'rgba(45, 49, 66, 0.12)'
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <span style={{ display: 'block', marginTop: '4px', fontSize: '11px', fontWeight: 700, color: passwordStrength.color }}>
+                      {passwordStrength.label}
+                      {!isPasswordStrongEnough && " — add a number or mix of upper/lowercase"}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginBottom: '18px' }}>
@@ -365,10 +497,65 @@ export default function AuthModal() {
               <button
                 type="submit"
                 className="btn-pop-yellow"
-                disabled={loading}
-                style={{ width: '100%', boxSizing: 'border-box', border: 'none', opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+                disabled={loading || !isPasswordStrongEnough}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  border: 'none',
+                  opacity: (loading || !isPasswordStrongEnough) ? 0.7 : 1,
+                  cursor: (loading || !isPasswordStrongEnough) ? 'not-allowed' : 'pointer'
+                }}
               >
                 {loading ? "Creating Account..." : "Create Account & Get 20% OFF 🎉"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleForgotSubmit}>
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  className="form-input"
+                  style={{ width: '100%', boxSizing: 'border-box', borderRadius: '14px' }}
+                  placeholder="e.g. alex@example.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn-pop-yellow"
+                disabled={forgotSubmitting}
+                style={{ width: '100%', boxSizing: 'border-box', border: 'none', opacity: forgotSubmitting ? 0.7 : 1, cursor: forgotSubmitting ? 'not-allowed' : 'pointer', marginBottom: '14px' }}
+              >
+                {forgotSubmitting ? "Sending..." : "Send Reset Link 📧"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('login');
+                  setErrorMessage('');
+                  setSuccessMessage('');
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: 'var(--play-orange, #FF6B35)',
+                  cursor: 'pointer',
+                  textAlign: 'center'
+                }}
+              >
+                ← Back to Sign In
               </button>
             </form>
           )}

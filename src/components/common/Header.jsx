@@ -1,5 +1,19 @@
 import React, { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  GearIcon as Gear,
+  UserCircleIcon as UserCircle,
+  PackageIcon as Package,
+  SignOutIcon as SignOut,
+  HouseIcon as House,
+  StorefrontIcon as Storefront,
+  ForkKnifeIcon as ForkKnife,
+  PawPrintIcon as PawPrint,
+  DropIcon as Drop,
+  PillIcon as Pill,
+  ShoppingCartSimpleIcon as ShoppingCartSimple,
+  CaretDownIcon as CaretDown
+} from '@phosphor-icons/react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useOrders } from '../../context/OrdersContext';
@@ -42,7 +56,12 @@ export default function Header() {
     { key: 'wellness', to: '/shop?cat=wellness', label: 'Wellness', isActive: location.search.includes('wellness') }
   ];
   if (isAdmin) {
-    navItems.push({ key: 'admin', to: '/admin', label: '⚙️ Admin Panel', isActive: location.pathname === '/admin' });
+    navItems.push({
+      key: 'admin',
+      to: '/admin',
+      label: 'Admin Panel',
+      isActive: location.pathname === '/admin'
+    });
   }
 
   const [hoveredKey, setHoveredKey] = useState(null);
@@ -101,7 +120,7 @@ export default function Header() {
                     onMouseEnter={() => setHoveredKey(item.key)}
                     onFocus={() => setHoveredKey(item.key)}
                   >
-                    {item.label}
+                    {item.icon}{item.label}
                   </Link>
                 </li>
               ))}
@@ -124,7 +143,7 @@ export default function Header() {
                 >
                   <span className="user-avatar-mini">{user.petEmoji || "🐾"}</span>
                   <span className="user-name-short">{user.name.split(' ')[0]}</span>
-                  <span className="dropdown-caret">▾</span>
+                  <CaretDown size={12} weight="bold" className="dropdown-caret" aria-hidden="true" />
                 </button>
 
                 {userDropdownOpen && (
@@ -173,7 +192,7 @@ export default function Header() {
                         textAlign: 'left'
                       }}
                     >
-                      📦 My Order History
+                      <Package size={16} weight="bold" aria-hidden="true" /> My Order History
                     </button>
 
                     {isAdmin && (
@@ -193,7 +212,7 @@ export default function Header() {
                           textDecoration: 'none'
                         }}
                       >
-                        ⚙️ Admin Dashboard
+                        <Gear size={16} weight="bold" aria-hidden="true" /> Admin Dashboard
                       </Link>
                     )}
 
@@ -223,7 +242,7 @@ export default function Header() {
                         borderTop: '1px solid rgba(45, 49, 66, 0.08)'
                       }}
                     >
-                      🚪 Sign Out
+                      <SignOut size={16} weight="bold" aria-hidden="true" /> Sign Out
                     </button>
                   </div>
                 )}
@@ -234,7 +253,7 @@ export default function Header() {
                 className="btn btn-outline btn-pill header-auth-btn"
                 onClick={() => openAuth('login')}
               >
-                <span>👤</span>
+                <UserCircle size={18} weight="bold" aria-hidden="true" />
                 <span className="auth-btn-label">Sign In</span>
               </button>
             )}
@@ -288,38 +307,52 @@ export default function Header() {
           <ul className="mobile-nav-list">
             <li>
               <Link to="/" className="mobile-nav-link" onClick={closeMobileNav}>
-                🏠 Home
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <House size={18} weight="bold" aria-hidden="true" /> Home
+                </span>
               </Link>
             </li>
             <li>
               <Link to="/shop" className="mobile-nav-link" onClick={closeMobileNav}>
-                🛍️ Shop All
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Storefront size={18} weight="bold" aria-hidden="true" /> Shop All
+                </span>
               </Link>
             </li>
             <li>
               <Link to="/shop?cat=feeds" className="mobile-nav-link" onClick={closeMobileNav}>
-                🥫 Feeds & Food
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <ForkKnife size={18} weight="bold" aria-hidden="true" /> Feeds & Food
+                </span>
               </Link>
             </li>
             <li>
               <Link to="/shop?cat=accessories" className="mobile-nav-link" onClick={closeMobileNav}>
-                🎾 Toys & Accessories
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <PawPrint size={18} weight="bold" aria-hidden="true" /> Toys & Accessories
+                </span>
               </Link>
             </li>
             <li>
               <Link to="/shop?cat=grooming" className="mobile-nav-link" onClick={closeMobileNav}>
-                🛁 Grooming
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Drop size={18} weight="bold" aria-hidden="true" /> Grooming
+                </span>
               </Link>
             </li>
             <li>
               <Link to="/shop?cat=wellness" className="mobile-nav-link" onClick={closeMobileNav}>
-                💊 Health & Wellness
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Pill size={18} weight="bold" aria-hidden="true" /> Health & Wellness
+                </span>
               </Link>
             </li>
             {isAdmin && (
               <li>
                 <Link to="/admin" className="mobile-nav-link" onClick={closeMobileNav} style={{ color: 'var(--color-purple)' }}>
-                  ⚙️ Admin Panel
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Gear size={18} weight="bold" aria-hidden="true" /> Admin Panel
+                  </span>
                 </Link>
               </li>
             )}
@@ -340,7 +373,7 @@ export default function Header() {
                     openOrderHistory();
                   }}
                 >
-                  📦 My Order History
+                  <Package size={16} weight="bold" aria-hidden="true" /> My Order History
                 </button>
                 <button
                   type="button"
@@ -352,7 +385,7 @@ export default function Header() {
                     navigate('/');
                   }}
                 >
-                  🚪 Sign Out
+                  <SignOut size={16} weight="bold" aria-hidden="true" /> Sign Out
                 </button>
               </div>
             ) : (
@@ -365,7 +398,7 @@ export default function Header() {
                   openAuth('login');
                 }}
               >
-                👤 Sign In / Create Account
+                <UserCircle size={18} weight="bold" aria-hidden="true" /> Sign In / Create Account
               </button>
             )}
 
@@ -378,7 +411,7 @@ export default function Header() {
                 openCart();
               }}
             >
-              🛒 View Cart ({totalCount})
+              <ShoppingCartSimple size={18} weight="bold" aria-hidden="true" /> View Cart ({totalCount})
             </button>
           </div>
         </div>

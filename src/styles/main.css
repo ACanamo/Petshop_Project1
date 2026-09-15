@@ -531,7 +531,7 @@ p {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 6px;
+  padding: 6px 18px;
   border-radius: 9999px;
   background: linear-gradient(135deg, #FFF3E2 0%, #FCE7CC 50%, #FADFBE 100%);
   border: 1.5px solid rgba(255, 107, 53, 0.22);

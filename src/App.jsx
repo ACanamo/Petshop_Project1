@@ -14,7 +14,7 @@ import AuthModal from './components/auth/AuthModal';
 import OrderHistoryModal from './components/orders/OrderHistoryModal';
 import InvoiceModal from './components/orders/InvoiceModal';
 import ProductQuickViewModal from './components/shop/ProductQuickViewModal';
-import IdleSessionWatcher from './components/common/IdleSessionWatcher';
+import SessionExpiryNotice from './components/common/SessionExpiryNotice';
 
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
@@ -55,7 +55,7 @@ export default function App() {
             <BrowserRouter>
               <div className="app-layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
                 <RouteEffects />
-                <IdleSessionWatcher />
+                <SessionExpiryNotice />
                 <TopBanner />
                 <Header />
 

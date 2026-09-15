@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase, isConfigured, PRIMARY_ADMIN_EMAIL } from '../lib/supabase';
 import { readJSON, writeJSON } from '../lib/storage';
 import { getPasswordStrength } from '../lib/passwordStrength';
@@ -89,6 +89,14 @@ export function AuthProvider({ children }) {
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
   const [loading, setLoading] = useState(false);
 
+  // Distinguishes a sign-out the user clicked ("Sign Out" button, via
+  // logout() below) from one Supabase itself triggered — e.g. its
+  // server-side inactivity timeout or session time-boxing (configured in
+  // the Supabase dashboard under Authentication > Sessions). Only the
+  // latter should surface an explanatory toast.
+  const isManualSignOutRef = useRef(false);
+  const [sessionExpiredAt, setSessionExpiredAt] = useState(null);
+
   // In local-fallback mode (no Supabase configured) `user` is rehydrated
   // straight from localStorage with no server verification, so a `role`
   // field there is trivially spoofable via devtools. Only trust it once a
@@ -132,6 +140,12 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
+        if (!isManualSignOutRef.current) {
+          // Supabase ended this session on its own (inactivity timeout,
+          // time-boxed session, or token expiry) rather than the user
+          // clicking "Sign Out" — let the UI explain why.
+          setSessionExpiredAt(Date.now());
+        }
         setUser(null);
         localStorage.removeItem(STORAGE_KEY_CUSTOMER);
       } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session?.user) {
@@ -299,9 +313,11 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     if (isConfigured()) {
+      isManualSignOutRef.current = true;
       try {
         await supabase.auth.signOut();
       } catch (_) {}
+      isManualSignOutRef.current = false;
     }
     setUser(null);
     localStorage.removeItem(STORAGE_KEY_CUSTOMER);
@@ -370,7 +386,8 @@ export function AuthProvider({ children }) {
       logout,
       resetPassword,
       updatePassword,
-      resendConfirmation
+      resendConfirmation,
+      sessionExpiredAt
     }}>
       {children}
     </AuthContext.Provider>

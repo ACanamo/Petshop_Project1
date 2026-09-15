@@ -6,6 +6,11 @@
 const LABELS = ['Very weak', 'Weak', 'Fair', 'Strong', 'Very strong'];
 const COLORS = ['#dc2626', '#f97316', '#eab308', '#22c55e', '#16a34a'];
 
+// The minimum score (out of 4) a password must reach before it's accepted
+// anywhere in the app — registration, password reset, and AuthContext's
+// defense-in-depth guard. Exported once here so all three stay in sync.
+export const MIN_PASSWORD_SCORE = 2;
+
 export function getPasswordStrength(password) {
   const value = password || '';
   let score = 0;

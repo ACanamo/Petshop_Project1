@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase, isConfigured, PRIMARY_ADMIN_EMAIL } from '../lib/supabase';
 import { readJSON, writeJSON } from '../lib/storage';
-import { getPasswordStrength } from '../lib/passwordStrength';
+import { getPasswordStrength, MIN_PASSWORD_SCORE } from '../lib/passwordStrength';
 
 const AuthContext = createContext();
 
@@ -10,7 +10,6 @@ const STORAGE_KEY_CUSTOMERS = "petchup_registered_customers";
 const LOGIN_ATTEMPTS_KEY = "petchup_login_attempts";
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MS = 60_000;
-const MIN_PASSWORD_SCORE = 2;
 
 async function buildCustomer(authUser) {
   const email = authUser.email || "";
@@ -77,6 +76,16 @@ function clearLoginAttempts(emailKey) {
     delete attempts[emailKey];
     writeJSON(LOGIN_ATTEMPTS_KEY, attempts);
   }
+}
+
+// The lockout counter should only track actual credential guesses — not
+// e.g. "email not confirmed," which a correct password still triggers
+// every time until the user clicks their confirmation link.
+function isCredentialError(error) {
+  if (!error) return true;
+  if (error.code === 'email_not_confirmed') return false;
+  if (/email not confirmed/i.test(error.message || '')) return false;
+  return true;
 }
 
 export function AuthProvider({ children }) {
@@ -184,7 +193,7 @@ export function AuthProvider({ children }) {
         });
 
         if (error) {
-          recordFailedLogin(emailKey);
+          if (isCredentialError(error)) recordFailedLogin(emailKey);
           setLoading(false);
           return { success: false, error: error.message };
         }

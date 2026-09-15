@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import PasswordInput from './PasswordInput';
-import { getPasswordStrength } from '../../lib/passwordStrength';
+import { getPasswordStrength, MIN_PASSWORD_SCORE } from '../../lib/passwordStrength';
 
-const MIN_PASSWORD_SCORE = 2;
 const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function AuthModal() {
@@ -28,6 +27,7 @@ export default function AuthModal() {
 
   // Resend confirmation cooldown
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendSubmitting, setResendSubmitting] = useState(false);
   const resendTimerRef = useRef(null);
 
   const [errorMessage, setErrorMessage] = useState('');
@@ -129,24 +129,29 @@ export default function AuthModal() {
   };
 
   const handleResendConfirmation = async () => {
-    if (resendCooldown > 0 || !registeredEmail) return;
-    const res = await resendConfirmation(registeredEmail);
-    if (!res.success) {
-      setErrorMessage(res.error || "Could not resend the confirmation email.");
-      return;
+    if (resendCooldown > 0 || resendSubmitting || !registeredEmail) return;
+    setResendSubmitting(true);
+    try {
+      const res = await resendConfirmation(registeredEmail);
+      if (!res.success) {
+        setErrorMessage(res.error || "Could not resend the confirmation email.");
+        return;
+      }
+      setSuccessMessage("Confirmation email resent — check your inbox.");
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      window.clearInterval(resendTimerRef.current);
+      resendTimerRef.current = window.setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) {
+            window.clearInterval(resendTimerRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } finally {
+      setResendSubmitting(false);
     }
-    setSuccessMessage("Confirmation email resent — check your inbox.");
-    setResendCooldown(RESEND_COOLDOWN_SECONDS);
-    window.clearInterval(resendTimerRef.current);
-    resendTimerRef.current = window.setInterval(() => {
-      setResendCooldown(prev => {
-        if (prev <= 1) {
-          window.clearInterval(resendTimerRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
   };
 
   return (
@@ -313,7 +318,7 @@ export default function AuthModal() {
             <button
               type="button"
               onClick={handleResendConfirmation}
-              disabled={resendCooldown > 0}
+              disabled={resendCooldown > 0 || resendSubmitting}
               style={{
                 display: 'block',
                 width: '100%',
@@ -323,14 +328,16 @@ export default function AuthModal() {
                 marginBottom: '16px',
                 fontSize: '12px',
                 fontWeight: 700,
-                color: resendCooldown > 0 ? 'var(--play-muted, #6B7082)' : 'var(--play-orange, #FF6B35)',
-                cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                color: (resendCooldown > 0 || resendSubmitting) ? 'var(--play-muted, #6B7082)' : 'var(--play-orange, #FF6B35)',
+                cursor: (resendCooldown > 0 || resendSubmitting) ? 'not-allowed' : 'pointer',
                 textAlign: 'left'
               }}
             >
-              {resendCooldown > 0
-                ? `Didn't get the email? Resend in ${resendCooldown}s`
-                : "Didn't get the email? Resend confirmation"}
+              {resendSubmitting
+                ? "Sending…"
+                : resendCooldown > 0
+                  ? `Didn't get the email? Resend in ${resendCooldown}s`
+                  : "Didn't get the email? Resend confirmation"}
             </button>
           )}
 

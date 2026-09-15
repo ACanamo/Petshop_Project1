@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PasswordInput from '../components/auth/PasswordInput';
-import { getPasswordStrength } from '../lib/passwordStrength';
-
-const MIN_PASSWORD_SCORE = 2;
+import { getPasswordStrength, MIN_PASSWORD_SCORE } from '../lib/passwordStrength';
 
 // Landing page for the link Supabase emails after a "forgot password"
 // request. Supabase's client auto-parses the recovery token out of the

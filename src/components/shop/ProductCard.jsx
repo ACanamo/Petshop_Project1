@@ -116,6 +116,7 @@ export default function ProductCard({ product }) {
         type="button"
         className={`btn btn-primary btn-pill btn-full add-to-cart-btn ${isPopping ? 'is-added-pop' : ''}`}
         onClick={handleAddToCart}
+        onKeyDown={(event) => event.stopPropagation()}
         disabled={!product.inStock}
         style={{
           background: btnText.includes("Added") ? "var(--color-teal, #06d6a0)" : undefined,

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { formatPeso, getOrderStatusMeta } from '../../lib/constants';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { XIcon } from '@phosphor-icons/react';
 
 export default function OrderHistoryModal() {
   const { isOrderHistoryOpen, closeOrderHistory, customerOrders, openInvoice, loadingOrders } = useOrders();
@@ -99,7 +100,7 @@ export default function OrderHistoryModal() {
             }}
             aria-label="Close order history"
           >
-            ✕
+            <XIcon size={18} weight="bold" aria-hidden="true" />
           </button>
         </div>
 

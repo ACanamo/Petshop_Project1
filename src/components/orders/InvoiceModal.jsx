@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useOrders } from '../../context/OrdersContext';
 import { formatPeso, getOrderStatusMeta } from '../../lib/constants';
+import { XIcon } from '@phosphor-icons/react';
 
 export default function InvoiceModal() {
   const { selectedInvoiceOrder, closeInvoice } = useOrders();
@@ -84,7 +85,7 @@ export default function InvoiceModal() {
             }}
             aria-label="Close invoice"
           >
-            ✕
+            <XIcon size={18} weight="bold" aria-hidden="true" />
           </button>
         </div>
 

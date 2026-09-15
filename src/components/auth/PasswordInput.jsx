@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { EyeIcon, EyeSlashIcon } from '@phosphor-icons/react';
 
 // Drop-in replacement for a plain <input type="password" className="form-input" .../>
 // that adds a show/hide toggle. Accepts the same props (value, onChange,
@@ -29,13 +30,14 @@ export default function PasswordInput({ inputStyle, ...inputProps }) {
           background: 'none',
           border: 'none',
           padding: '6px',
+          display: 'flex',
           cursor: 'pointer',
-          fontSize: '16px',
-          lineHeight: 1,
           color: 'var(--play-muted, #6B7082)'
         }}
       >
-        {visible ? '🙈' : '👁️'}
+        {visible
+          ? <EyeSlashIcon size={18} weight="bold" aria-hidden="true" />
+          : <EyeIcon size={18} weight="bold" aria-hidden="true" />}
       </button>
     </div>
   );

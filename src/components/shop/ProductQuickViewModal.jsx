@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { useCart } from '../../context/CartContext';
 import { formatPeso, getBadgeClass, getCategoryTint, getPetLabel, getCategoryLabel, normalizeEmoji } from '../../lib/constants';
+import { XIcon } from '@phosphor-icons/react';
 
 export default function ProductQuickViewModal() {
   const { selectedProduct, closeProductView } = useStore();
@@ -121,7 +122,7 @@ export default function ProductQuickViewModal() {
               flexShrink: 0
             }}
           >
-            ✕
+            <XIcon size={16} weight="bold" aria-hidden="true" />
           </button>
         </div>
 

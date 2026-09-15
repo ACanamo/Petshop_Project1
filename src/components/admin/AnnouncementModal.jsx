@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
+import { XIcon } from '@phosphor-icons/react';
 
 export default function AnnouncementModal({ isOpen, onClose, onSave, initialAnn }) {
   const { showToast } = useCart();
@@ -107,7 +108,7 @@ export default function AnnouncementModal({ isOpen, onClose, onSave, initialAnn 
               boxShadow: '0 2px 8px rgba(45, 49, 66, 0.12)'
             }}
           >
-            ✕
+            <XIcon size={18} weight="bold" aria-hidden="true" />
           </button>
         </div>
 

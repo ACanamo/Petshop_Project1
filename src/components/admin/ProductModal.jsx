@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
+import { XIcon } from '@phosphor-icons/react';
 
 export default function ProductModal({ isOpen, onClose, onSave, initialProduct }) {
   const { showToast } = useCart();
@@ -135,7 +136,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
               boxShadow: '0 2px 8px rgba(45, 49, 66, 0.12)'
             }}
           >
-            ✕
+            <XIcon size={18} weight="bold" aria-hidden="true" />
           </button>
         </div>
 
@@ -314,7 +315,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
                       color: '#ef4444'
                     }}
                   >
-                    ✕
+                    <XIcon size={16} weight="bold" aria-hidden="true" />
                   </button>
                 )}
               </div>

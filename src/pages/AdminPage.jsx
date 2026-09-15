@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStore } from '../context/StoreContext';
 import { useOrders } from '../context/OrdersContext';
@@ -9,6 +9,7 @@ import ProductModal from '../components/admin/ProductModal';
 import AnnouncementModal from '../components/admin/AnnouncementModal';
 import { formatPeso, getOrderStatusMeta } from '../lib/constants';
 import { getSavedUrl, getSavedKey, saveCredentials, isConfigured } from '../lib/supabase';
+import { TrashIcon } from '@phosphor-icons/react';
 
 // Shared soft "play" card treatment — mirrors the rounded, softly-shadowed
 // cards used across the landing page (category cards, product cards, hero
@@ -21,7 +22,8 @@ const CARD_STYLE = {
 };
 
 export default function AdminPage() {
-  const { user, isAdmin, login, logout } = useAuth();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const {
     products,
     announcements,
@@ -37,12 +39,6 @@ export default function AdminPage() {
 
   const { orders, updateOrderStatus, deleteOrder, clearAllOrders, openInvoice } = useOrders();
   const { showToast } = useCart();
-
-  // Admin login form state
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Active admin tab
   const [activeTab, setActiveTab] = useState('products'); // 'products' | 'announcements' | 'orders' | 'sync'
@@ -62,111 +58,6 @@ export default function AdminPage() {
 
   // Product table search
   const [productSearch, setProductSearch] = useState('');
-
-  const handleAdminLogin = async (e) => {
-    e.preventDefault();
-    setLoginError('');
-    setIsLoggingIn(true);
-
-    const res = await login(adminEmail, adminPassword);
-    setIsLoggingIn(false);
-
-    if (!res.success) {
-      setLoginError(res.error || "Invalid administrator credentials");
-    }
-  };
-
-  // If not admin, show secure login barrier
-  if (!isAdmin) {
-    return (
-      <main style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'var(--font-play)' }}>
-        <div style={{
-          background: '#fff',
-          border: '2px solid var(--play-border)',
-          borderRadius: '26px',
-          boxShadow: '0 20px 50px rgba(45, 49, 66, 0.14)',
-          maxWidth: '440px',
-          width: '100%',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            background: 'linear-gradient(135deg, var(--play-yellow) 0%, #FFE197 100%)',
-            padding: '28px 24px',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '42px', marginBottom: '8px' }}>🔐</div>
-            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: 'var(--play-charcoal)' }}>
-              Store Administrator Access
-            </h2>
-            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#5b5342', fontWeight: 600 }}>
-              Please authenticate to access the PETCHUP management console.
-            </p>
-          </div>
-
-          <form onSubmit={handleAdminLogin} style={{ padding: '24px' }}>
-            {loginError && (
-              <div style={{
-                background: '#FFE8EA',
-                color: '#B82531',
-                border: '1.5px solid #FFC4CA',
-                borderRadius: '14px',
-                padding: '10px 14px',
-                fontSize: '13px',
-                fontWeight: 600,
-                marginBottom: '16px'
-              }}>
-                ⚠️ {loginError}
-              </div>
-            )}
-
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                Admin Email
-              </label>
-              <input
-                type="email"
-                className="form-input"
-                style={{ width: '100%', boxSizing: 'border-box' }}
-                placeholder="canamoaries13@gmail.com"
-                value={adminEmail}
-                onChange={(e) => setAdminEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                Admin Password
-              </label>
-              <input
-                type="password"
-                className="form-input"
-                style={{ width: '100%', boxSizing: 'border-box' }}
-                placeholder="••••••••"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary btn-pill btn-full"
-              disabled={isLoggingIn}
-            >
-              {isLoggingIn ? "Verifying..." : "Sign In to Admin 🚀"}
-            </button>
-
-            <div style={{ textAlign: 'center', marginTop: '16px' }}>
-              <Link to="/" style={{ fontSize: '13px', color: '#64748b', textDecoration: 'underline' }}>
-                ← Return to Store
-              </Link>
-            </div>
-          </form>
-        </div>
-      </main>
-    );
-  }
 
   // Admin save product
   const handleSaveProduct = (productData) => {
@@ -235,7 +126,10 @@ export default function AdminPage() {
             <button
               type="button"
               className="btn btn-pill"
-              onClick={logout}
+              onClick={async () => {
+                await logout();
+                navigate('/login');
+              }}
               style={{
                 background: '#FFE8EA',
                 border: '1.5px solid #FFC4CA',
@@ -401,8 +295,9 @@ export default function AdminPage() {
                                 runAdminAction(deleteProduct(product.id));
                               }
                             }}
+                            aria-label={`Delete ${product.name}`}
                           >
-                            🗑️
+                            <TrashIcon size={15} weight="bold" aria-hidden="true" />
                           </button>
                         </div>
                       </td>
@@ -513,8 +408,9 @@ export default function AdminPage() {
                           runAdminAction(deleteAnnouncement(ann.id));
                         }
                       }}
+                      aria-label="Delete announcement"
                     >
-                      🗑️
+                      <TrashIcon size={15} weight="bold" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -649,8 +545,9 @@ export default function AdminPage() {
                                     runAdminAction(deleteOrder(order.id));
                                   }
                                 }}
+                                aria-label={`Delete order #${order.id}`}
                               >
-                                🗑️
+                                <TrashIcon size={15} weight="bold" aria-hidden="true" />
                               </button>
                             </div>
                           </td>

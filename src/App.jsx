@@ -10,15 +10,17 @@ import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import Toast from './components/common/Toast';
 import CartDrawer from './components/cart/CartDrawer';
-import AuthModal from './components/auth/AuthModal';
 import OrderHistoryModal from './components/orders/OrderHistoryModal';
 import InvoiceModal from './components/orders/InvoiceModal';
 import ProductQuickViewModal from './components/shop/ProductQuickViewModal';
 import SessionExpiryNotice from './components/common/SessionExpiryNotice';
 
+import ProtectedRoute from './components/auth/ProtectedRoute';
+
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import LoginPage from './pages/LoginPage';
 
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 
@@ -46,6 +48,22 @@ function PageFallback() {
   return <div className="route-loading" role="status">Loading Petchup…</div>;
 }
 
+// The promo ribbon and full site footer both compete with the login card
+// for attention (and the footer's dark block makes the page look like it
+// ends mid-thought) on a page whose only job is getting someone signed in,
+// so both are hidden there — everywhere else they render as usual.
+function ConditionalTopBanner() {
+  const { pathname } = useLocation();
+  if (pathname === '/login') return null;
+  return <TopBanner />;
+}
+
+function ConditionalFooter() {
+  const { pathname } = useLocation();
+  if (pathname === '/login') return null;
+  return <Footer />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -56,7 +74,7 @@ export default function App() {
               <div className="app-layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
                 <RouteEffects />
                 <SessionExpiryNotice />
-                <TopBanner />
+                <ConditionalTopBanner />
                 <Header />
 
                 <div style={{ flex: 1 }}>
@@ -65,17 +83,17 @@ export default function App() {
                       <Route path="/" element={<HomePage />} />
                       <Route path="/shop" element={<ShopPage />} />
                       <Route path="/reset-password" element={<ResetPasswordPage />} />
-                      <Route path="/admin" element={<AdminPage />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Suspense>
                 </div>
 
-                <Footer />
+                <ConditionalFooter />
 
                 {/* Modals, Drawers & Overlays */}
                 <CartDrawer />
-                <AuthModal />
                 <OrderHistoryModal />
                 <InvoiceModal />
                 <ProductQuickViewModal />

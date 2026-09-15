@@ -94,8 +94,6 @@ export function AuthProvider({ children }) {
     return readJSON(STORAGE_KEY_CUSTOMER, null);
   });
 
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
   const [loading, setLoading] = useState(false);
 
   // Distinguishes a sign-out the user clicked ("Sign Out" button, via
@@ -168,15 +166,6 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const openAuth = (mode = 'login') => {
-    setAuthMode(mode);
-    setIsAuthOpen(true);
-  };
-
-  const closeAuth = () => {
-    setIsAuthOpen(false);
-  };
-
   const login = async (email, password) => {
     const emailKey = email.trim().toLowerCase();
     const lockedSeconds = getLoginLockout(emailKey);
@@ -210,7 +199,6 @@ export function AuthProvider({ children }) {
         setUser(customerObj);
         writeJSON(STORAGE_KEY_CUSTOMER, customerObj);
         setLoading(false);
-        closeAuth();
         return { success: true, user: customerObj };
       }
 
@@ -229,7 +217,6 @@ export function AuthProvider({ children }) {
       setUser(found);
       writeJSON(STORAGE_KEY_CUSTOMER, found);
       setLoading(false);
-      closeAuth();
       return { success: true, user: found };
     } catch (err) {
       recordFailedLogin(emailKey);
@@ -239,7 +226,7 @@ export function AuthProvider({ children }) {
   };
 
   const register = async ({ name, email, password, petName, petType }) => {
-    // Defense-in-depth: AuthModal already blocks submission of a weak
+    // Defense-in-depth: LoginPage already blocks submission of a weak
     // password via the strength meter, but guard here too in case
     // register() is ever called some other way.
     if (getPasswordStrength(password).score < MIN_PASSWORD_SCORE) {
@@ -289,7 +276,6 @@ export function AuthProvider({ children }) {
         setUser(customerObj);
         writeJSON(STORAGE_KEY_CUSTOMER, customerObj);
         setLoading(false);
-        closeAuth();
         return { success: true, user: customerObj };
       }
 
@@ -312,7 +298,6 @@ export function AuthProvider({ children }) {
 
       setUser(customerObj);
       setLoading(false);
-      closeAuth();
       return { success: true, user: customerObj };
     } catch (err) {
       setLoading(false);
@@ -385,11 +370,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user,
       isAdmin,
-      isAuthOpen,
-      authMode,
       loading,
-      openAuth,
-      closeAuth,
       login,
       register,
       logout,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { XIcon, TrashIcon } from '@phosphor-icons/react';
 import { useCart } from '../../context/CartContext';
 import { useOrders } from '../../context/OrdersContext';
 import { useAuth } from '../../context/AuthContext';
@@ -24,7 +25,9 @@ export default function CartDrawer() {
   } = useCart();
 
   const { createOrder } = useOrders();
-  const { user, openAuth } = useAuth();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
@@ -72,7 +75,7 @@ export default function CartDrawer() {
     if (!user) {
       showToast("Please sign up or log in to complete your checkout!");
       closeCart();
-      openAuth('register');
+      navigate('/login?tab=register', { state: { from: location } });
       return;
     }
 
@@ -143,7 +146,7 @@ export default function CartDrawer() {
             onClick={closeCart}
             aria-label="Close cart"
           >
-            ✕
+            <XIcon size={18} weight="bold" aria-hidden="true" />
           </button>
         </div>
 
@@ -249,7 +252,7 @@ export default function CartDrawer() {
                   onClick={() => removeFromCart(index)}
                   aria-label={`Remove ${item.name}`}
                 >
-                  🗑️
+                  <TrashIcon size={17} weight="bold" aria-hidden="true" />
                 </button>
               </div>
             ))

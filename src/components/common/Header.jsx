@@ -22,7 +22,7 @@ export default function Header() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const { totalCount, openCart } = useCart();
-  const { user, isAdmin, openAuth, logout } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const { openOrderHistory } = useOrders();
   const location = useLocation();
   const navigate = useNavigate();
@@ -222,7 +222,7 @@ export default function Header() {
                       onClick={async () => {
                         setUserDropdownOpen(false);
                         await logout();
-                        navigate('/');
+                        navigate('/login');
                       }}
                       style={{
                         display: 'flex',
@@ -251,7 +251,7 @@ export default function Header() {
               <button
                 type="button"
                 className="btn btn-outline btn-pill header-auth-btn"
-                onClick={() => openAuth('login')}
+                onClick={() => navigate('/login')}
               >
                 <UserCircle size={18} weight="bold" aria-hidden="true" />
                 <span className="auth-btn-label">Sign In</span>
@@ -382,7 +382,7 @@ export default function Header() {
                   onClick={async () => {
                     closeMobileNav();
                     await logout();
-                    navigate('/');
+                    navigate('/login');
                   }}
                 >
                   <SignOut size={16} weight="bold" aria-hidden="true" /> Sign Out
@@ -395,7 +395,7 @@ export default function Header() {
                 style={{ marginBottom: '12px' }}
                 onClick={() => {
                   closeMobileNav();
-                  openAuth('login');
+                  navigate('/login');
                 }}
               >
                 <UserCircle size={18} weight="bold" aria-hidden="true" /> Sign In / Create Account

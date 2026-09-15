@@ -1,12 +1,27 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { readJSON, writeJSON } from '../lib/storage';
+import { supabase, isConfigured } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
 const STORAGE_KEY_CART = "petchup_cart";
 const STORAGE_KEY_DISCOUNT = "petchup_active_discount";
 
+function rowToItem(row) {
+  return {
+    id: row.product_id,
+    name: row.name,
+    price: Number(row.price),
+    img: row.img || "🐾",
+    imageUrl: row.image_url || "",
+    qty: row.qty
+  };
+}
+
 export function CartProvider({ children }) {
+  const { user } = useAuth();
+
   const [cart, setCart] = useState(() => readJSON(STORAGE_KEY_CART, []));
 
   const [activeDiscount, setActiveDiscount] = useState(() => readJSON(STORAGE_KEY_DISCOUNT, null));
@@ -16,6 +31,46 @@ export function CartProvider({ children }) {
   const toastTimer = useRef(null);
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  // A signed-in shopper's cart lives in the `cart_items` table (see
+  // supabase_schema.sql), keyed by user id, so it follows them across
+  // logout/login and devices instead of the guest-only localStorage copy
+  // below. Load it the moment a user becomes available — right after
+  // login, or on page load if a session was already active.
+  useEffect(() => {
+    if (!isConfigured() || !user) return;
+    let active = true;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('cart_items')
+          .select('*')
+          .eq('user_id', user.id);
+        if (!active || error || !Array.isArray(data)) return;
+        setCart(data.map(rowToItem));
+      } catch (err) {
+        console.warn("Could not load your saved cart:", err);
+      }
+    })();
+
+    return () => { active = false; };
+  }, [user?.id]);
+
+  // The cart shown on screen shouldn't leak to whoever uses this device
+  // next, so clear the local/guest view the moment a session ends —
+  // whether the user clicked "Sign Out" or Supabase expired it server-side.
+  // This only clears what's displayed; the row above is what's saved in
+  // `cart_items` under that account, so it's exactly what gets reloaded the
+  // next time they log back in.
+  const prevUserRef = useRef(user);
+  useEffect(() => {
+    if (prevUserRef.current && !user) {
+      setCart([]);
+      setActiveDiscount(null);
+    }
+    prevUserRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     writeJSON(STORAGE_KEY_CART, cart);
@@ -37,38 +92,72 @@ export function CartProvider({ children }) {
     }, 2800);
   };
 
+  // Saved-cart write-throughs below are fire-and-forget: the on-screen
+  // state updates immediately, and the Supabase row (which is what
+  // actually reappears at next login) catches up in the background. A
+  // failure just means that one change doesn't stick for next time — not
+  // worth blocking the UI over.
+  const syncItemToCloud = async (item) => {
+    if (!isConfigured() || !user) return;
+    try {
+      await supabase.from('cart_items').upsert({
+        user_id: user.id,
+        product_id: item.id,
+        name: item.name,
+        price: item.price,
+        img: item.img,
+        image_url: item.imageUrl,
+        qty: item.qty,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id,product_id' });
+    } catch (err) {
+      console.warn("Could not sync cart item to your account:", err);
+    }
+  };
+
+  const removeItemFromCloud = async (productId) => {
+    if (!isConfigured() || !user) return;
+    try {
+      await supabase.from('cart_items').delete().eq('user_id', user.id).eq('product_id', productId);
+    } catch (err) {
+      console.warn("Could not remove cart item from your account:", err);
+    }
+  };
+
   const addToCart = (product, qty = 1) => {
-    setCart(prev => {
-      const existingIdx = prev.findIndex(item => item.id === product.id);
-      if (existingIdx !== -1) {
-        const updated = [...prev];
-        updated[existingIdx] = {
-          ...updated[existingIdx],
-          qty: updated[existingIdx].qty + qty
-        };
-        return updated;
-      } else {
-        return [...prev, {
+    const existingIdx = cart.findIndex(item => item.id === product.id);
+    const newItem = existingIdx !== -1
+      ? { ...cart[existingIdx], qty: cart[existingIdx].qty + qty }
+      : {
           id: product.id,
           name: product.name,
           price: product.price,
           img: product.img || "🐾",
           imageUrl: product.imageUrl || "",
-          qty: qty
-        }];
+          qty
+        };
+
+    setCart(prev => {
+      const idx = prev.findIndex(item => item.id === product.id);
+      if (idx !== -1) {
+        const updated = [...prev];
+        updated[idx] = newItem;
+        return updated;
       }
+      return [...prev, newItem];
     });
 
     showToast(`🎉 Added ${product.name} to cart!`);
+    syncItemToCloud(newItem);
   };
 
   const removeFromCart = (index) => {
-    setCart(prev => {
-      const removed = prev[index];
-      const updated = prev.filter((_, i) => i !== index);
-      if (removed) showToast(`Removed ${removed.name} from cart`);
-      return updated;
-    });
+    const removed = cart[index];
+    setCart(prev => prev.filter((_, i) => i !== index));
+    if (removed) {
+      showToast(`Removed ${removed.name} from cart`);
+      removeItemFromCloud(removed.id);
+    }
   };
 
   const updateQty = (index, newQty) => {
@@ -76,17 +165,28 @@ export function CartProvider({ children }) {
       removeFromCart(index);
       return;
     }
+    const current = cart[index];
+    if (!current) return;
+    const updatedItem = { ...current, qty: newQty };
+
     setCart(prev => {
       const updated = [...prev];
       if (updated[index]) {
-        updated[index] = { ...updated[index], qty: newQty };
+        updated[index] = updatedItem;
       }
       return updated;
     });
+
+    syncItemToCloud(updatedItem);
   };
 
   const clearCart = () => {
     setCart([]);
+    if (isConfigured() && user) {
+      supabase.from('cart_items').delete().eq('user_id', user.id).then(({ error }) => {
+        if (error) console.warn("Could not clear your saved cart:", error);
+      });
+    }
   };
 
   const applyDiscount = (rawCode) => {

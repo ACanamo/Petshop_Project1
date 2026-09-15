@@ -111,6 +111,24 @@ WHERE jsonb_array_length(images) = 0 AND image_url IS NOT NULL AND image_url <> 
 -- FIX 0001: Index the orders.customer_id FK — improves join/filter performance.
 CREATE INDEX IF NOT EXISTS ix_orders_customer_id ON public.orders (customer_id);
 
+-- 4B. CART ITEMS TABLE
+-- Persists a signed-in shopper's cart server-side, keyed by (user_id,
+-- product_id), so it survives logout/login and follows them across devices.
+-- No FK on product_id (unlike orders, which snapshot items into JSONB) —
+-- OrderHistoryModal's "Reorder" can re-add a discontinued product's id, and
+-- a strict FK would reject that insert.
+CREATE TABLE IF NOT EXISTS public.cart_items (
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  product_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  price NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  img TEXT DEFAULT '🐾',
+  image_url TEXT DEFAULT '',
+  qty INTEGER NOT NULL DEFAULT 1 CHECK (qty > 0),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_id, product_id)
+);
+
 -- ==============================================================================
 -- 5. STORAGE BUCKET FOR PRODUCT PHOTOS
 -- ==============================================================================
@@ -149,6 +167,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cart_items ENABLE ROW LEVEL SECURITY;
 
 -- Drop all existing policies
 DROP POLICY IF EXISTS "Public Read Profiles"           ON public.profiles;
@@ -183,6 +202,11 @@ DROP POLICY IF EXISTS "orders_insert_public"           ON public.orders;
 DROP POLICY IF EXISTS "orders_select_own_or_admin"     ON public.orders;
 DROP POLICY IF EXISTS "orders_update_admin"            ON public.orders;
 DROP POLICY IF EXISTS "orders_delete_admin"            ON public.orders;
+
+DROP POLICY IF EXISTS "cart_items_select_own"          ON public.cart_items;
+DROP POLICY IF EXISTS "cart_items_insert_own"          ON public.cart_items;
+DROP POLICY IF EXISTS "cart_items_update_own"          ON public.cart_items;
+DROP POLICY IF EXISTS "cart_items_delete_own"          ON public.cart_items;
 
 -- ── PROFILES ────────────────────────────────────────────────────────────────
 -- FIX 0003: (SELECT auth.uid()) — evaluated ONCE per query, not once per row.
@@ -295,6 +319,31 @@ CREATE POLICY "orders_delete_admin"
   ON public.orders FOR DELETE
   TO authenticated
   USING (private.is_admin());
+
+-- ── CART ITEMS ──────────────────────────────────────────────────────────────
+-- Each shopper reads/writes only their own saved cart rows. No admin
+-- override needed — cart contents aren't a support/moderation concern the
+-- way orders are.
+CREATE POLICY "cart_items_select_own"
+  ON public.cart_items FOR SELECT
+  TO authenticated
+  USING ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY "cart_items_insert_own"
+  ON public.cart_items FOR INSERT
+  TO authenticated
+  WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY "cart_items_update_own"
+  ON public.cart_items FOR UPDATE
+  TO authenticated
+  USING ((SELECT auth.uid()) = user_id)
+  WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY "cart_items_delete_own"
+  ON public.cart_items FOR DELETE
+  TO authenticated
+  USING ((SELECT auth.uid()) = user_id);
 
 -- ── STORAGE: PRODUCT IMAGES ──────────────────────────────────────────────────
 -- Ensure the product-images bucket exists in Supabase Storage and is public

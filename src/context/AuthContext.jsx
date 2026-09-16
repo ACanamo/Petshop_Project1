@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { supabase, isConfigured, PRIMARY_ADMIN_EMAIL } from '../lib/supabase';
 import { readJSON, writeJSON } from '../lib/storage';
 import { getPasswordStrength, MIN_PASSWORD_SCORE } from '../lib/passwordStrength';
+import { logError } from '../lib/errorLog';
 
 const AuthContext = createContext();
 
@@ -28,10 +29,14 @@ async function buildCustomer(authUser) {
     // Auth still works if the optional profile row has not been created yet.
   }
 
-  const isPrimaryAdmin = email.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase();
-  const role = isPrimaryAdmin || profile?.role === 'admin' || appRole === 'admin'
-    ? 'admin'
-    : 'user';
+  // Admin status is the profiles.role column (or the JWT's app_metadata role,
+  // which only the service role can set) — full stop. It used to also trust
+  // an email-string match against PRIMARY_ADMIN_EMAIL, which meant admin
+  // status didn't actually live in one place: the DB role column could say
+  // 'customer' and this would still grant admin. See is_admin() in
+  // supabase_schema.sql for the matching server-side fix — that email is
+  // now only ever used once, as the one-time bootstrap seed.
+  const role = profile?.role === 'admin' || appRole === 'admin' ? 'admin' : 'user';
 
   return {
     id: authUser.id,
@@ -104,17 +109,14 @@ export function AuthProvider({ children }) {
   const isManualSignOutRef = useRef(false);
   const [sessionExpiredAt, setSessionExpiredAt] = useState(null);
 
-  // In local-fallback mode (no Supabase configured) `user` is rehydrated
-  // straight from localStorage with no server verification, so a `role`
-  // field there is trivially spoofable via devtools. Only trust it once a
-  // real backend (with RLS) is actually in play; otherwise admin status can
-  // only come from matching the known primary admin email.
-  const isAdmin = Boolean(
-    user && (
-      (isConfigured() && user.role === 'admin') ||
-      (user.email && user.email.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase())
-    )
-  );
+  // Single source of truth: user.role, set above (real backend) or by
+  // register()'s local-fallback bootstrap below (no backend at all — that
+  // path is already documented as trivially spoofable via devtools, since
+  // there's no RLS to fall back on offline; it's a demo affordance, not a
+  // security boundary). Either way, isAdmin itself no longer special-cases
+  // any specific email — the real enforcement is private.is_admin() in
+  // supabase_schema.sql, which now checks the same single role column.
+  const isAdmin = Boolean(user && user.role === 'admin');
 
   // Restore Supabase Session on mount
   useEffect(() => {
@@ -139,7 +141,7 @@ export function AuthProvider({ children }) {
           localStorage.removeItem(STORAGE_KEY_CUSTOMER);
         }
       } catch (err) {
-        console.warn("Could not retrieve session:", err);
+        logError('AuthContext.checkSession', err);
       }
     }
 
@@ -262,11 +264,15 @@ export function AuthProvider({ children }) {
           setLoading(false);
           return { success: true, requiresEmailConfirmation: true };
         }
+        // A brand-new signup is always 'user' — handle_new_user() in
+        // supabase_schema.sql no longer auto-promotes any email, so there's
+        // nothing to look up here. (The one existing admin was seeded once
+        // via a bootstrap UPDATE, not by this signup path.)
         const customerObj = {
           id: authUser ? authUser.id : ("cust-" + Date.now()),
           name: name.trim(),
           email: email.trim().toLowerCase(),
-          role: email.trim().toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase() ? "admin" : "user",
+          role: "user",
           petName: petName || "Buddy",
           petType: petType || "dog",
           petEmoji: petEmoji,

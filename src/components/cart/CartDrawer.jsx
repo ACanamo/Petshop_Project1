@@ -4,7 +4,9 @@ import { XIcon, TrashIcon } from '@phosphor-icons/react';
 import { useCart } from '../../context/CartContext';
 import { useOrders } from '../../context/OrdersContext';
 import { useAuth } from '../../context/AuthContext';
+import { useStore } from '../../context/StoreContext';
 import { formatPeso, normalizeEmoji } from '../../lib/constants';
+import { logError } from '../../lib/errorLog';
 import OrderSuccessModal from './OrderSuccessModal';
 
 export default function CartDrawer() {
@@ -26,6 +28,7 @@ export default function CartDrawer() {
 
   const { createOrder } = useOrders();
   const { user } = useAuth();
+  const { syncFromSupabase } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -101,6 +104,11 @@ export default function CartDrawer() {
         total: grandTotal
       });
 
+      // Refresh the cached product list so the stock place_order() just
+      // decremented (see supabase_schema.sql) shows up immediately in the
+      // shop instead of only after a manual reload.
+      syncFromSupabase();
+
       setTimeout(() => {
         setIsSubmitting(false);
         clearCart();
@@ -110,6 +118,10 @@ export default function CartDrawer() {
     } catch (err) {
       setIsSubmitting(false);
       showToast(err.message || "Could not complete checkout. Please try again.");
+      // Also logged server-side (not just the toast the customer sees) so
+      // an admin can spot patterns — e.g. one product's stock check failing
+      // repeatedly is a "restock this now" signal, not just a one-off.
+      logError('CartDrawer.handleCheckout', err);
     }
   };
 

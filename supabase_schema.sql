@@ -129,6 +129,21 @@ CREATE TABLE IF NOT EXISTS public.cart_items (
   PRIMARY KEY (user_id, product_id)
 );
 
+-- 4C. COUPON REDEMPTIONS TABLE
+-- Tracks that a given customer has used a given coupon code, so "first
+-- order" codes like FIRSTPAW20 can only ever apply once per customer
+-- instead of being reusable forever. Written only by place_order() below
+-- (SECURITY DEFINER) — no direct INSERT/UPDATE/DELETE policy exists for
+-- authenticated, so a customer can't fabricate or erase their own
+-- redemption history via the REST API.
+CREATE TABLE IF NOT EXISTS public.coupon_redemptions (
+  customer_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  code TEXT NOT NULL,
+  order_id TEXT REFERENCES public.orders(id) ON DELETE SET NULL,
+  redeemed_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (customer_id, code)
+);
+
 -- ==============================================================================
 -- 5. STORAGE BUCKET FOR PRODUCT PHOTOS
 -- ==============================================================================
@@ -145,15 +160,20 @@ CREATE SCHEMA IF NOT EXISTS private;
 REVOKE ALL ON SCHEMA private FROM PUBLIC, anon;
 GRANT USAGE ON SCHEMA private TO authenticated;
 
+-- Admin status lives in exactly one place: profiles.role. This used to also
+-- OR in a hardcoded email match, which meant admin access didn't actually
+-- depend on the role column at all — anyone who ever got Supabase to accept
+-- that exact email (a recreated account, a future email-change edge case)
+-- would be admin forever regardless of what their role said. The first
+-- admin is seeded once via the bootstrap UPDATE near the bottom of section
+-- 8 below; after that, promoting/demoting an admin is just an UPDATE on
+-- profiles.role, not a code change.
 CREATE OR REPLACE FUNCTION private.is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN (
-    LOWER(COALESCE(auth.jwt() ->> 'email', '')) = 'canamoaries13@gmail.com'
-    OR EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = (SELECT auth.uid()) AND role = 'admin'
-    )
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = (SELECT auth.uid()) AND role = 'admin'
   );
 END;
 $$ LANGUAGE plpgsql
@@ -168,6 +188,7 @@ ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cart_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.coupon_redemptions ENABLE ROW LEVEL SECURITY;
 
 -- Drop all existing policies
 DROP POLICY IF EXISTS "Public Read Profiles"           ON public.profiles;
@@ -207,6 +228,8 @@ DROP POLICY IF EXISTS "cart_items_select_own"          ON public.cart_items;
 DROP POLICY IF EXISTS "cart_items_insert_own"          ON public.cart_items;
 DROP POLICY IF EXISTS "cart_items_update_own"          ON public.cart_items;
 DROP POLICY IF EXISTS "cart_items_delete_own"          ON public.cart_items;
+
+DROP POLICY IF EXISTS "coupon_redemptions_select_own"  ON public.coupon_redemptions;
 
 -- ── PROFILES ────────────────────────────────────────────────────────────────
 -- FIX 0003: (SELECT auth.uid()) — evaluated ONCE per query, not once per row.
@@ -292,11 +315,11 @@ CREATE POLICY "announcements_delete_admin"
 -- FIX 0006: Single consolidated SELECT policy avoids multiple permissive policies.
 -- FIX 0003: (SELECT auth.uid()) for per-query performance.
 
--- Allow guests to submit orders without claiming another customer's identity.
--- Authenticated checkouts must use the caller's own UUID; guest orders use NULL.
-CREATE POLICY "orders_insert_public"
-  ON public.orders FOR INSERT
-  WITH CHECK (customer_id IS NULL OR customer_id = (SELECT auth.uid()));
+-- Security Hardening: Direct INSERT on public.orders is disabled.
+-- All checkouts must execute through public.place_order() (SECURITY DEFINER),
+-- which enforces atomic stock locking, stock deduction, rate-limiting, and
+-- single-use coupon redemption.
+DROP POLICY IF EXISTS "orders_insert_public" ON public.orders;
 
 -- OWASP A01 FIX: Removed `OR (SELECT auth.uid()) IS NULL`.
 -- That clause allowed anonymous sessions to read ALL orders in the table.
@@ -345,6 +368,17 @@ CREATE POLICY "cart_items_delete_own"
   TO authenticated
   USING ((SELECT auth.uid()) = user_id);
 
+-- ── COUPON REDEMPTIONS ──────────────────────────────────────────────────────
+-- Read-only for customers (so a future "your coupons" UI could show history);
+-- deliberately no INSERT/UPDATE/DELETE policy at all — only place_order()
+-- (SECURITY DEFINER) can write here, so a customer can't call
+-- supabase.from('coupon_redemptions').delete(...) to erase their own usage
+-- and reuse a code.
+CREATE POLICY "coupon_redemptions_select_own"
+  ON public.coupon_redemptions FOR SELECT
+  TO authenticated
+  USING ((SELECT auth.uid()) = customer_id);
+
 -- ── STORAGE: PRODUCT IMAGES ──────────────────────────────────────────────────
 -- Ensure the product-images bucket exists in Supabase Storage and is public
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -392,28 +426,29 @@ CREATE POLICY "storage_product_images_delete_auth"
 -- 8. AUTOMATIC PROFILE CREATION TRIGGER WITH ADMIN PROMOTION
 -- FIX 0011: SET search_path = '' — all references are fully qualified.
 -- ==============================================================================
+-- Every new signup starts as 'customer' — no email is auto-promoted to
+-- admin here. The one existing admin is granted their role by the one-time
+-- bootstrap UPDATE just below this function (run once, when this schema is
+-- first applied); any admin added after that is a direct
+-- `UPDATE public.profiles SET role = 'admin' WHERE id = ...`, not a code
+-- change. The ON CONFLICT branch deliberately never touches `role` — this
+-- trigger should only ever set it once, on true first insert, never reset
+-- it back to 'customer' if it somehow re-fires for an existing id.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
-DECLARE
-  assigned_role TEXT := 'customer';
 BEGIN
-  IF LOWER(NEW.email) = 'canamoaries13@gmail.com' THEN
-    assigned_role := 'admin';
-  END IF;
-
   INSERT INTO public.profiles (id, name, email, role, pet_name, pet_type, pet_emoji, member_tier)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
     NEW.email,
-    assigned_role,
+    'customer',
     COALESCE(NEW.raw_user_meta_data->>'pet_name', ''),
     COALESCE(NEW.raw_user_meta_data->>'pet_type', 'dog'),
     COALESCE(NEW.raw_user_meta_data->>'pet_emoji', '🐶'),
-    CASE WHEN assigned_role = 'admin' THEN 'Store Administrator' ELSE 'VIP Paw Member' END
+    'VIP Paw Member'
   )
   ON CONFLICT (id) DO UPDATE SET
-    role  = EXCLUDED.role,
     name  = EXCLUDED.name,
     email = EXCLUDED.email;
 
@@ -428,7 +463,35 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- Ensure existing admin email already in the DB gets the correct role
+-- BACKFILL: handle_new_user() only fires on NEW signups (AFTER INSERT ON
+-- auth.users) — an account created before this trigger existed in the
+-- project has no public.profiles row at all, not a row with bad data. That
+-- silently breaks anything that looks the customer up by id (place_order()
+-- deriving customer_name/email, is_admin() checking role — an orphaned
+-- account can never pass private.is_admin(), since its query finds zero
+-- rows) and the admin-role UPDATE just below this would silently affect
+-- zero rows for such an account. Safe to re-run — only ever inserts for an
+-- auth.users row that still has no matching profiles row.
+INSERT INTO public.profiles (id, name, email, role, pet_name, pet_type, pet_emoji, member_tier)
+SELECT
+  u.id,
+  COALESCE(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name', split_part(u.email, '@', 1)),
+  u.email,
+  'customer',
+  COALESCE(u.raw_user_meta_data->>'pet_name', ''),
+  COALESCE(u.raw_user_meta_data->>'pet_type', 'dog'),
+  COALESCE(u.raw_user_meta_data->>'pet_emoji', '🐶'),
+  'VIP Paw Member'
+FROM auth.users u
+LEFT JOIN public.profiles p ON p.id = u.id
+WHERE p.id IS NULL;
+
+-- ONE-TIME BOOTSTRAP: grants the very first admin their role. This is the
+-- only place a specific email should ever appear in this file going
+-- forward — it runs once (re-running the whole schema is idempotent since
+-- it's just re-asserting the same UPDATE), and every admin decision after
+-- this is a plain role UPDATE, not a hardcoded identity check in a function
+-- that runs on every request.
 UPDATE public.profiles SET role = 'admin' WHERE LOWER(email) = 'canamoaries13@gmail.com';
 
 -- Customers may edit presentation fields, but never identity or authorization fields.
@@ -661,6 +724,269 @@ CREATE TRIGGER trg_check_order_rate_limit
   FOR EACH ROW EXECUTE PROCEDURE public.check_order_rate_limit();
 
 REVOKE EXECUTE ON FUNCTION public.check_order_rate_limit() FROM PUBLIC, anon, authenticated;
+
+-- ==============================================================================
+-- 14. ATOMIC CHECKOUT: DECREMENT STOCK + INSERT ORDER IN ONE TRANSACTION
+-- Bug fix: the client used to insert the order row directly, which never
+-- touched public.products at all — stock_quantity stayed unchanged after
+-- checkout no matter how many units were bought, and nothing stopped an
+-- order for more units than were in stock.
+--
+-- This RPC replaces that direct insert (see createOrder() in
+-- src/context/OrdersContext.jsx). It runs as one Postgres transaction:
+--   1. Locks each ordered product row (FOR UPDATE) and checks stock_quantity
+--      is enough — raises and rolls back the whole thing if not, so a
+--      rejected order never touches stock at all.
+--   2. Inserts the order (trg_validate_order_totals and
+--      trg_check_order_rate_limit above still fire normally, since this is
+--      a plain INSERT from inside the function).
+--   3. Decrements stock_quantity per item and flips in_stock off at 0.
+-- SECURITY DEFINER is what lets it write to public.products despite
+-- products_update_admin restricting direct UPDATEs to admins — the function
+-- itself is the only path that can move stock, and only by the exact
+-- ordered quantities, so that restriction isn't weakened.
+--
+-- Security Advisor flags this as "SECURITY DEFINER callable by authenticated"
+-- (security_definer_function_executable) — reviewed and intentional, not an
+-- oversight: a signed-in customer placing a normal order is exactly who is
+-- meant to call this. The two alternatives the advisor suggests don't work
+-- here: SECURITY INVOKER would run the stock UPDATE as the calling customer,
+-- which products_update_admin (admin-only) would then reject, breaking
+-- checkout entirely; revoking EXECUTE from authenticated breaks checkout the
+-- same way (see the anon-only revoke just below this function, which *is*
+-- the fix for the separate, valid "callable while signed out" finding — that
+-- one caught real dead surface area, this one is a false positive for an
+-- RPC whose whole job is a scoped, audited privilege escalation).
+--
+-- Audit fix: this function used to also accept p_id, p_customer_id,
+-- p_customer_name and p_customer_email straight from the client and trust
+-- them (customer_id was at least checked against auth.uid(), but name/email
+-- were not checked at all). Since this RPC is authenticated-only, there is
+-- no legitimate reason left to accept any client-supplied identity —
+-- customer_id, name and email are now all derived from auth.uid() and
+-- profiles, and the order id is server-generated. A signed-in caller can no
+-- longer attach an arbitrary name/email to their own order.
+--
+-- Also adds coupon-redemption enforcement: a customer can only successfully
+-- apply a given discount_code once, ever (see public.coupon_redemptions).
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.place_order(
+  p_pet_name TEXT,
+  p_items JSONB,
+  p_discount_code TEXT
+)
+RETURNS public.orders AS $$
+DECLARE
+  v_customer_id UUID := (SELECT auth.uid());
+  v_customer_name TEXT;
+  v_customer_email TEXT;
+  v_order_id TEXT := 'ord-' || replace(gen_random_uuid()::text, '-', '');
+  v_normalized_code TEXT := UPPER(TRIM(COALESCE(p_discount_code, '')));
+  item JSONB;
+  v_product_id TEXT;
+  v_qty INTEGER;
+  v_stock INTEGER;
+  v_name TEXT;
+  new_order public.orders;
+BEGIN
+  IF v_customer_id IS NULL THEN
+    RAISE EXCEPTION 'You must be signed in to place an order';
+  END IF;
+
+  SELECT name, email INTO v_customer_name, v_customer_email
+  FROM public.profiles
+  WHERE id = v_customer_id;
+
+  v_customer_name := COALESCE(v_customer_name, 'Guest Pet Parent');
+  v_customer_email := COALESCE(v_customer_email, '');
+
+  IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' OR jsonb_array_length(p_items) = 0 THEN
+    RAISE EXCEPTION 'Order must contain at least one item';
+  END IF;
+
+  -- Reject upfront if this exact code was already redeemed by this
+  -- customer on a previous order — before touching stock or inserting
+  -- anything, same fail-fast approach as the stock check below.
+  IF v_normalized_code <> '' AND EXISTS (
+    SELECT 1 FROM public.coupon_redemptions
+    WHERE customer_id = v_customer_id AND code = v_normalized_code
+  ) THEN
+    RAISE EXCEPTION 'You''ve already used the coupon "%"', v_normalized_code;
+  END IF;
+
+  -- Pass 1: lock and validate every line BEFORE writing anything, so a
+  -- shortage on item 3 doesn't leave items 1-2 already decremented.
+  FOR item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    v_product_id := item->>'id';
+    v_qty := GREATEST(COALESCE((item->>'qty')::INTEGER, 0), 0);
+
+    IF v_qty <= 0 THEN
+      RAISE EXCEPTION 'Invalid item quantity in order';
+    END IF;
+
+    SELECT stock_quantity, name INTO v_stock, v_name
+    FROM public.products
+    WHERE id = v_product_id
+    FOR UPDATE;
+
+    IF v_stock IS NULL THEN
+      RAISE EXCEPTION 'Unknown product % in order', v_product_id;
+    END IF;
+
+    IF v_stock < v_qty THEN
+      RAISE EXCEPTION 'Not enough stock for "%": only % left, % requested', v_name, v_stock, v_qty;
+    END IF;
+  END LOOP;
+
+  -- item_count/subtotal/discount_amount/total are placeholders — the
+  -- trg_validate_order_totals BEFORE INSERT trigger recomputes them from
+  -- the authoritative product prices (and the same fixed coupon table) before
+  -- the row is actually written.
+  INSERT INTO public.orders (
+    id, customer_id, customer_name, customer_email, pet_name,
+    items, item_count, subtotal, discount_code, discount_amount, total, status, created_at
+  ) VALUES (
+    v_order_id, v_customer_id, v_customer_name, v_customer_email,
+    COALESCE(p_pet_name, ''), p_items, 0, 0, v_normalized_code, 0, 0, 'pending', NOW()
+  )
+  RETURNING * INTO new_order;
+
+  -- Only record a redemption if the code actually produced a real discount
+  -- (trg_validate_order_totals is the sole source of truth for which codes
+  -- are valid) — an unrecognized or empty code just leaves nothing to track.
+  IF new_order.discount_amount > 0 THEN
+    INSERT INTO public.coupon_redemptions (customer_id, code, order_id, redeemed_at)
+    VALUES (v_customer_id, v_normalized_code, new_order.id, NOW());
+  END IF;
+
+  -- Pass 2: the order committed (within this still-open transaction) and
+  -- every line already passed its stock check above — safe to deduct now.
+  FOR item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    v_product_id := item->>'id';
+    v_qty := (item->>'qty')::INTEGER;
+
+    UPDATE public.products
+    SET stock_quantity = stock_quantity - v_qty,
+        in_stock = (stock_quantity - v_qty) > 0,
+        updated_at = NOW()
+    WHERE id = v_product_id;
+  END LOOP;
+
+  RETURN new_order;
+END;
+$$ LANGUAGE plpgsql
+   SECURITY DEFINER
+   SET search_path = '';
+
+-- Old 7-argument signature is gone — DROP explicitly, since CREATE OR
+-- REPLACE with a different parameter list creates a second overload instead
+-- of replacing it, which would leave the old, less-safe version still
+-- callable.
+DROP FUNCTION IF EXISTS public.place_order(TEXT, UUID, TEXT, TEXT, TEXT, JSONB, TEXT);
+
+-- authenticated only, not anon: CartDrawer.handleCheckout already blocks
+-- checkout entirely for a signed-out user (redirects to /login first), so
+-- this never needs to run pre-auth. Restricting the grant to match is what
+-- the Security Advisor's "SECURITY DEFINER callable without signing in"
+-- check is looking for — a signed-out request now gets a permission error
+-- from Postgres before any of the function's logic runs.
+REVOKE EXECUTE ON FUNCTION public.place_order(TEXT, JSONB, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.place_order(TEXT, JSONB, TEXT) TO authenticated;
+
+-- ==============================================================================
+-- 15. LIGHTWEIGHT ERROR LOGGING
+-- Background failures (a cart sync, a product refresh, a session restore)
+-- previously only ever reached console.warn — invisible unless a developer
+-- happened to have devtools open on that exact browser at that exact
+-- moment. This is a minimal, self-hosted stand-in for a real error-tracking
+-- service (Sentry etc.): src/lib/errorLog.js calls log_client_error() below
+-- from the app's catch blocks, and AdminPage's "System Errors" tab reads
+-- the table back.
+--
+-- Writing goes through log_client_error(), not a direct table INSERT policy
+-- — Security Advisor correctly flagged an earlier version of this that used
+-- `WITH CHECK (true)` open to anon as overly permissive, and unlike
+-- place_order() (reviewed and kept broad because a checkout's blast radius
+-- is bounded by real stock/prices), an unbounded free-text INSERT has no
+-- such natural bound: anyone could script-flood this table, and even
+-- without malice, a client-side logging bug that loops could do the same
+-- thing. The function truncates every field and adds a coarse global rate
+-- limit, and derives user_id from the session instead of trusting a
+-- client-supplied one.
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.error_logs (
+  id BIGSERIAL PRIMARY KEY,
+  context TEXT NOT NULL,
+  message TEXT NOT NULL,
+  stack TEXT,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_error_logs_created_at ON public.error_logs (created_at DESC);
+
+ALTER TABLE public.error_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "error_logs_insert_any"   ON public.error_logs;
+DROP POLICY IF EXISTS "error_logs_select_admin" ON public.error_logs;
+DROP POLICY IF EXISTS "error_logs_delete_admin" ON public.error_logs;
+
+-- No INSERT policy at all — every write goes through log_client_error()
+-- (SECURITY DEFINER), which bypasses RLS as the table owner. Direct
+-- `supabase.from('error_logs').insert(...)` from a client is now rejected
+-- outright, regardless of role.
+CREATE POLICY "error_logs_select_admin"
+  ON public.error_logs FOR SELECT
+  TO authenticated
+  USING (private.is_admin());
+
+CREATE POLICY "error_logs_delete_admin"
+  ON public.error_logs FOR DELETE
+  TO authenticated
+  USING (private.is_admin());
+
+GRANT SELECT, DELETE ON public.error_logs TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.log_client_error(
+  p_context TEXT,
+  p_message TEXT,
+  p_stack TEXT
+)
+RETURNS VOID AS $$
+DECLARE
+  recent_count INTEGER;
+BEGIN
+  -- Coarse circuit breaker: global, not per-caller, since an anonymous
+  -- caller has no stable identity to key a per-user limit on. Bounds worst
+  -- case storage growth from either a flooding script or an ordinary bug
+  -- (e.g. an effect that logs in a loop) rather than trying to distinguish
+  -- the two.
+  SELECT COUNT(*) INTO recent_count
+  FROM public.error_logs
+  WHERE created_at > NOW() - INTERVAL '1 minute';
+
+  IF recent_count >= 200 THEN
+    RETURN;
+  END IF;
+
+  INSERT INTO public.error_logs (context, message, stack, user_id)
+  VALUES (
+    LEFT(COALESCE(p_context, 'unknown'), 200),
+    LEFT(COALESCE(p_message, ''), 2000),
+    LEFT(p_stack, 4000),
+    (SELECT auth.uid())
+  );
+END;
+$$ LANGUAGE plpgsql
+   SECURITY DEFINER
+   SET search_path = '';
+
+-- Security Advisor Fix: Revoke from anon to clear the SECURITY DEFINER warning
+-- and prevent unauthenticated error log spam. Authenticated users can still log.
+REVOKE EXECUTE ON FUNCTION public.log_client_error(TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.log_client_error(TEXT, TEXT, TEXT) TO authenticated;
 
 -- ==============================================================================
 -- NOTE: auth_leaked_password_protection warning must be fixed in Supabase Dashboard:

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { readJSON, writeJSON } from '../lib/storage';
 import { supabase, isConfigured } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { logError } from '../lib/errorLog';
 
 const CartContext = createContext();
 
@@ -50,7 +51,7 @@ export function CartProvider({ children }) {
         if (!active || error || !Array.isArray(data)) return;
         setCart(data.map(rowToItem));
       } catch (err) {
-        console.warn("Could not load your saved cart:", err);
+        logError('CartContext.loadCart', err);
       }
     })();
 
@@ -111,7 +112,7 @@ export function CartProvider({ children }) {
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id,product_id' });
     } catch (err) {
-      console.warn("Could not sync cart item to your account:", err);
+      logError('CartContext.syncItemToCloud', err);
     }
   };
 
@@ -120,7 +121,7 @@ export function CartProvider({ children }) {
     try {
       await supabase.from('cart_items').delete().eq('user_id', user.id).eq('product_id', productId);
     } catch (err) {
-      console.warn("Could not remove cart item from your account:", err);
+      logError('CartContext.removeItemFromCloud', err);
     }
   };
 
@@ -184,7 +185,7 @@ export function CartProvider({ children }) {
     setCart([]);
     if (isConfigured() && user) {
       supabase.from('cart_items').delete().eq('user_id', user.id).then(({ error }) => {
-        if (error) console.warn("Could not clear your saved cart:", error);
+        if (error) logError('CartContext.clearCart', error);
       });
     }
   };

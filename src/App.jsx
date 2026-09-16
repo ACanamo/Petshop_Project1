@@ -17,11 +17,14 @@ import SessionExpiryNotice from './components/common/SessionExpiryNotice';
 
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
+// HomePage stays eager — it's the default "/" route, so splitting it out
+// wouldn't reduce time-to-first-render, only add a network round trip. The
+// others are only needed once someone navigates to them.
 import HomePage from './pages/HomePage';
-import ShopPage from './pages/ShopPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import LoginPage from './pages/LoginPage';
 
+const ShopPage = lazy(() => import('./pages/ShopPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 import './styles/main.css';

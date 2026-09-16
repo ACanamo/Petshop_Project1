@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStore } from '../context/StoreContext';
@@ -8,7 +8,7 @@ import MetricsRibbon from '../components/admin/MetricsRibbon';
 import ProductModal from '../components/admin/ProductModal';
 import AnnouncementModal from '../components/admin/AnnouncementModal';
 import { formatPeso, getOrderStatusMeta } from '../lib/constants';
-import { getSavedUrl, getSavedKey, saveCredentials, isConfigured } from '../lib/supabase';
+import { supabase, getSavedUrl, getSavedKey, saveCredentials, isConfigured } from '../lib/supabase';
 import { TrashIcon } from '@phosphor-icons/react';
 
 // Shared soft "play" card treatment — mirrors the rounded, softly-shadowed
@@ -59,6 +59,36 @@ export default function AdminPage() {
   // Product table search
   const [productSearch, setProductSearch] = useState('');
 
+  // System error log (see supabase_schema.sql section 15 / src/lib/errorLog.js)
+  const [errorLogs, setErrorLogs] = useState([]);
+  const [errorLogsLoading, setErrorLogsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'errors' || !isConfigured()) return;
+    let active = true;
+    setErrorLogsLoading(true);
+    supabase
+      .from('error_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (!error && Array.isArray(data)) setErrorLogs(data);
+        setErrorLogsLoading(false);
+      });
+    return () => { active = false; };
+  }, [activeTab]);
+
+  const handleClearErrorLogs = async () => {
+    if (!confirm("Clear all logged errors? This cannot be undone.")) return;
+    const ids = errorLogs.map(row => row.id);
+    if (ids.length) {
+      await supabase.from('error_logs').delete().in('id', ids);
+    }
+    setErrorLogs([]);
+  };
+
   // Admin save product
   const handleSaveProduct = (productData) => {
     if (editingProduct) {
@@ -92,7 +122,8 @@ export default function AdminPage() {
     { key: 'products', label: `📦 Products Catalog (${products.length})` },
     { key: 'announcements', label: `📢 Announcements (${announcements.length})` },
     { key: 'orders', label: `🛍️ Orders Manager (${orders.length})` },
-    { key: 'sync', label: '☁️ Supabase Cloud' }
+    { key: 'sync', label: '☁️ Supabase Cloud' },
+    { key: 'errors', label: `🐞 System Errors${errorLogs.length ? ` (${errorLogs.length})` : ''}` }
   ];
 
   return (
@@ -623,10 +654,13 @@ export default function AdminPage() {
                 className="btn btn-primary btn-pill"
                 onClick={() => {
                   saveCredentials(sbUrl, sbKey);
-                  setSyncStatusMsg("Successfully updated credentials!");
+                  setSyncStatusMsg("Successfully updated credentials! Reloading to apply changes...");
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 600);
                 }}
               >
-                💾 Save Credentials
+                💾 Save & Apply Credentials
               </button>
 
               <button
@@ -641,6 +675,89 @@ export default function AdminPage() {
                 🔄 Sync Catalog Now
               </button>
             </div>
+          </div>
+        )}
+
+        {/* TAB 5: System Errors — read-only view over error_logs (see
+            src/lib/errorLog.js and supabase_schema.sql section 15). A
+            minimal, self-hosted stand-in for a real error-tracking service:
+            background failures (cart sync, product sync, checkout) write
+            here so they're visible somewhere other than a customer's own
+            devtools console. */}
+        {activeTab === 'errors' && (
+          <div style={{ ...CARD_STYLE, padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--play-charcoal)' }}>
+                  Recent System Errors
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--play-muted)' }}>
+                  Background failures (cart sync, product sync, checkout) that customers never see a message for. Most recent 50.
+                </p>
+              </div>
+
+              {errorLogs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearErrorLogs}
+                  style={{
+                    background: '#FFE8EA',
+                    border: '1.5px solid #FFC4CA',
+                    color: '#B82531',
+                    padding: '6px 14px',
+                    borderRadius: '999px',
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🗑️ Clear Logs
+                </button>
+              )}
+            </div>
+
+            {errorLogsLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--play-muted)' }}>
+                Loading…
+              </div>
+            ) : errorLogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <div style={{ fontSize: '54px', marginBottom: '12px' }}>✨</div>
+                <h4 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px', color: 'var(--play-charcoal)' }}>
+                  No errors logged recently!
+                </h4>
+                <p style={{ fontSize: '14px', color: 'var(--play-muted)', maxWidth: '420px', margin: '0 auto' }}>
+                  Cart syncs, product syncs, and checkouts have all been going through cleanly.
+                </p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', border: '1.5px solid var(--play-border)', borderRadius: '16px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: '#FAFAFA', borderBottom: '1.5px solid var(--play-border)', fontSize: '12px', color: 'var(--play-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      <th style={{ padding: '12px 14px' }}>When</th>
+                      <th style={{ padding: '12px 14px' }}>Context</th>
+                      <th style={{ padding: '12px 14px' }}>Message</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {errorLogs.map(row => (
+                      <tr key={row.id} style={{ borderBottom: '1px solid var(--play-border)', fontSize: '13px', verticalAlign: 'top' }}>
+                        <td style={{ padding: '12px 14px', whiteSpace: 'nowrap', color: 'var(--play-muted)', fontSize: '12px' }}>
+                          {new Date(row.created_at).toLocaleString()}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--play-purple)' }}>
+                          {row.context}
+                        </td>
+                        <td style={{ padding: '12px 14px', color: 'var(--play-charcoal)' }}>
+                          {row.message}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>

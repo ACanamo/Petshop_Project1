@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, isConfigured } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { readJSON, writeJSON } from '../lib/storage';
+import { logError } from '../lib/errorLog';
 
 const OrdersContext = createContext();
 
@@ -30,6 +31,17 @@ export function OrdersProvider({ children }) {
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
+  // Clear orders in state and local storage when a user signs out or session ends
+  // to avoid leaking purchase history to a guest or next user on a shared device.
+  const prevUserRef = useRef(user);
+  useEffect(() => {
+    if (prevUserRef.current && !user) {
+      setOrders([]);
+      localStorage.removeItem(STORAGE_KEY_ORDERS);
+    }
+    prevUserRef.current = user;
+  }, [user]);
+
   // Sync orders with Supabase
   const syncOrders = useCallback(async () => {
     if (!isConfigured() || !user) return;
@@ -51,7 +63,7 @@ export function OrdersProvider({ children }) {
         writeJSON(STORAGE_KEY_ORDERS, cleanCloud);
       }
     } catch (err) {
-      console.warn("Could not sync orders:", err);
+      logError('OrdersContext.syncOrders', err);
     } finally {
       setLoadingOrders(false);
     }
@@ -67,44 +79,49 @@ export function OrdersProvider({ children }) {
   };
 
   const createOrder = async (orderData) => {
+    const items = orderData.items || [];
+    const customerId = orderData.customerId || user?.id || null;
+    const customerName = orderData.customerName || user?.name || "Guest Pet Parent";
+    const customerEmail = orderData.customerEmail || user?.email || "";
+    const petName = orderData.petName || user?.petName || "";
+    const discountCode = orderData.discountCode || "";
+
+    if (isConfigured()) {
+      // place_order() decrements product stock and inserts the order in one
+      // Postgres transaction, rejects the whole checkout if any item doesn't
+      // have enough stock left, and enforces one-time-per-customer coupon
+      // redemption — see supabase_schema.sql section 14. It derives the
+      // order's id, customer_id, customer_name and customer_email itself
+      // from the caller's own session/profile — none of that is accepted
+      // from the client (only descriptive, non-identity fields are).
+      const { data, error } = await supabase.rpc('place_order', {
+        p_pet_name: petName,
+        p_items: items,
+        p_discount_code: discountCode
+      });
+      if (error) throw new Error(error.message || "Could not save the order.");
+
+      const updatedList = [data, ...orders];
+      saveOrdersList(updatedList);
+      return data;
+    }
+
+    // Offline / local fallback — no server-side stock table to reconcile.
     const newOrder = {
       id: "ord-" + Date.now(),
-      customer_id: orderData.customerId || user?.id || null,
-      customer_name: orderData.customerName || user?.name || "Guest Pet Parent",
-      customer_email: orderData.customerEmail || user?.email || "",
-      pet_name: orderData.petName || user?.petName || "",
-      items: orderData.items || [],
-      item_count: (orderData.items || []).reduce((sum, it) => sum + (it.qty || 1), 0),
+      customer_id: customerId,
+      customer_name: customerName,
+      customer_email: customerEmail,
+      pet_name: petName,
+      items,
+      item_count: items.reduce((sum, it) => sum + (it.qty || 1), 0),
       subtotal: parseFloat(Number(orderData.subtotal || 0).toFixed(2)),
-      discount_code: orderData.discountCode || "",
+      discount_code: discountCode,
       discount_amount: parseFloat(Number(orderData.discountAmount || 0).toFixed(2)),
       total: parseFloat(Number(orderData.total || 0).toFixed(2)),
       status: "pending",
       created_at: new Date().toISOString()
     };
-
-    if (isConfigured()) {
-      try {
-        const { error } = await supabase.from('orders').insert({
-          id: newOrder.id,
-          customer_id: newOrder.customer_id,
-          customer_name: newOrder.customer_name,
-          customer_email: newOrder.customer_email,
-          pet_name: newOrder.pet_name,
-          items: newOrder.items,
-          item_count: newOrder.item_count,
-          subtotal: newOrder.subtotal,
-          discount_code: newOrder.discount_code,
-          discount_amount: newOrder.discount_amount,
-          total: newOrder.total,
-          status: newOrder.status,
-          created_at: newOrder.created_at
-        });
-        if (error) throw error;
-      } catch (err) {
-        throw new Error(err.message || "Could not save the order.");
-      }
-    }
 
     const updatedList = [newOrder, ...orders];
     saveOrdersList(updatedList);

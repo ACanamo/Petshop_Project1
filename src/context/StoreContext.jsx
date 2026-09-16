@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isConfigured } from '../lib/supabase';
 import { DEFAULT_PRODUCTS, DEFAULT_ANNOUNCEMENTS } from '../lib/constants';
 import { readJSON, writeJSON } from '../lib/storage';
+import { logError } from '../lib/errorLog';
 
 const StoreContext = createContext();
 
@@ -106,7 +107,7 @@ export function StoreProvider({ children }) {
         writeJSON(STORAGE_KEY_ANNOUNCEMENTS, mapped);
       }
     } catch (err) {
-      console.warn("Error syncing with Supabase:", err);
+      logError('StoreContext.syncFromSupabase', err);
     } finally {
       setLoading(false);
     }

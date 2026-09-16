@@ -111,6 +111,32 @@ export default function AdminPage() {
     showToast(error.message || 'The change could not be saved. Please try again.');
   });
 
+  const handleOrderStatusChange = async (orderId, newStatus) => {
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      if (newStatus === 'cancelled') {
+        showToast(`Order #${orderId} cancelled. Items returned to inventory! 📦`);
+        await syncFromSupabase();
+      } else {
+        showToast(`Order #${orderId} status updated to ${newStatus}.`);
+      }
+    } catch (error) {
+      showToast(error.message || 'Could not update order status.');
+    }
+  };
+
+  const handleDeleteOrder = async (orderId) => {
+    if (confirm(`Delete order #${orderId}?`)) {
+      try {
+        await deleteOrder(orderId);
+        showToast(`Order #${orderId} deleted.`);
+        await syncFromSupabase();
+      } catch (error) {
+        showToast(error.message || 'Could not delete order.');
+      }
+    }
+  };
+
   // Filter products for table
   const filteredProducts = products.filter(p => {
     if (!productSearch) return true;
@@ -539,16 +565,20 @@ export default function AdminPage() {
                           <td style={{ padding: '12px 14px' }}>
                             <select
                               value={order.status || 'pending'}
-                              onChange={(e) => runAdminAction(updateOrderStatus(order.id, e.target.value))}
+                              disabled={order.status === 'cancelled'}
+                              onChange={(e) => handleOrderStatusChange(order.id, e.target.value)}
                               style={{
                                 padding: '5px 10px',
                                 borderRadius: '999px',
                                 border: '1.5px solid var(--play-border)',
                                 fontWeight: 700,
                                 fontSize: '12px',
-                                background: '#FAFAFA',
+                                background: order.status === 'cancelled' ? '#F3F4F6' : '#FAFAFA',
+                                color: order.status === 'cancelled' ? '#9CA3AF' : 'inherit',
+                                cursor: order.status === 'cancelled' ? 'not-allowed' : 'pointer',
                                 fontFamily: 'var(--font-play)'
                               }}
+                              title={order.status === 'cancelled' ? 'Cancelled orders cannot be reopened' : 'Change order status'}
                             >
                               <option value="pending">🕒 Pending</option>
                               <option value="processing">📦 Processing</option>
@@ -571,11 +601,7 @@ export default function AdminPage() {
                                 type="button"
                                 className="btn btn-outline btn-pill"
                                 style={{ fontSize: '12px', padding: '4px 10px', color: '#B82531', borderColor: '#FFC4CA' }}
-                                onClick={() => {
-                                  if (confirm(`Delete order #${order.id}?`)) {
-                                    runAdminAction(deleteOrder(order.id));
-                                  }
-                                }}
+                                onClick={() => handleDeleteOrder(order.id)}
                                 aria-label={`Delete order #${order.id}`}
                               >
                                 <TrashIcon size={15} weight="bold" aria-hidden="true" />

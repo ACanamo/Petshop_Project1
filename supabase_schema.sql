@@ -989,6 +989,97 @@ REVOKE EXECUTE ON FUNCTION public.log_client_error(TEXT, TEXT, TEXT) FROM PUBLIC
 GRANT EXECUTE ON FUNCTION public.log_client_error(TEXT, TEXT, TEXT) TO authenticated;
 
 -- ==============================================================================
+-- 16. AUTOMATIC INVENTORY RESTOCK ON ORDER CANCELLATION
+-- Fixes inventory leak: when an order transitions to 'cancelled', the items
+-- previously deducted by place_order() are automatically restored to stock.
+-- Enforces terminal state: once cancelled, an order cannot be reverted to
+-- 'pending' or 'processing' because the returned stock may have already been
+-- purchased by other shoppers.
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.handle_order_cancel_restock()
+RETURNS TRIGGER AS $$
+DECLARE
+  item JSONB;
+  v_product_id TEXT;
+  v_qty INTEGER;
+BEGIN
+  -- 1. State machine terminality guard:
+  IF OLD.status = 'cancelled' AND NEW.status <> 'cancelled' THEN
+    RAISE EXCEPTION 'Cancelled orders cannot be reopened because returned inventory may have already been allocated to other shoppers.';
+  END IF;
+
+  -- 2. Restock only on true state transition into 'cancelled':
+  IF OLD.status IS DISTINCT FROM 'cancelled' AND NEW.status = 'cancelled' THEN
+    IF jsonb_typeof(NEW.items) = 'array' THEN
+      FOR item IN SELECT * FROM jsonb_array_elements(NEW.items)
+      LOOP
+        v_product_id := item->>'id';
+        v_qty := GREATEST(COALESCE((item->>'qty')::INTEGER, 0), 0);
+
+        IF v_product_id IS NOT NULL AND v_qty > 0 THEN
+          UPDATE public.products
+          SET stock_quantity = stock_quantity + v_qty,
+              in_stock = true,
+              updated_at = NOW()
+          WHERE id = v_product_id;
+        END IF;
+      END LOOP;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+   SECURITY DEFINER
+   SET search_path = '';
+
+DROP TRIGGER IF EXISTS trg_restock_on_order_cancel ON public.orders;
+CREATE TRIGGER trg_restock_on_order_cancel
+  BEFORE UPDATE ON public.orders
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_order_cancel_restock();
+
+REVOKE EXECUTE ON FUNCTION public.handle_order_cancel_restock() FROM PUBLIC, anon, authenticated;
+
+-- 3. Restock on hard delete of active orders:
+CREATE OR REPLACE FUNCTION public.handle_order_delete_restock()
+RETURNS TRIGGER AS $$
+DECLARE
+  item JSONB;
+  v_product_id TEXT;
+  v_qty INTEGER;
+BEGIN
+  -- Only restock if the order was NOT already cancelled before deletion
+  -- (to avoid double-restocking).
+  IF OLD.status <> 'cancelled' AND jsonb_typeof(OLD.items) = 'array' THEN
+    FOR item IN SELECT * FROM jsonb_array_elements(OLD.items)
+    LOOP
+      v_product_id := item->>'id';
+      v_qty := GREATEST(COALESCE((item->>'qty')::INTEGER, 0), 0);
+
+      IF v_product_id IS NOT NULL AND v_qty > 0 THEN
+        UPDATE public.products
+        SET stock_quantity = stock_quantity + v_qty,
+            in_stock = true,
+            updated_at = NOW()
+        WHERE id = v_product_id;
+      END IF;
+    END LOOP;
+  END IF;
+
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql
+   SECURITY DEFINER
+   SET search_path = '';
+
+DROP TRIGGER IF EXISTS trg_restock_on_order_delete ON public.orders;
+CREATE TRIGGER trg_restock_on_order_delete
+  BEFORE DELETE ON public.orders
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_order_delete_restock();
+
+REVOKE EXECUTE ON FUNCTION public.handle_order_delete_restock() FROM PUBLIC, anon, authenticated;
+
+-- ==============================================================================
 -- NOTE: auth_leaked_password_protection warning must be fixed in Supabase Dashboard:
 --   Authentication -> Providers -> Email -> "Enable Leaked Password Protection"
 --   (toggle it ON). This cannot be changed via SQL.

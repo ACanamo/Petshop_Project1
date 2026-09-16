@@ -133,8 +133,15 @@ export function OrdersProvider({ children }) {
     const idx = orders.findIndex(o => o.id === orderId);
     if (idx === -1) return null;
 
+    const currentOrder = orders[idx];
+
+    // Client-side guard matching the database state machine
+    if (currentOrder.status === 'cancelled' && newStatus !== 'cancelled') {
+      throw new Error("Cancelled orders cannot be reopened because returned inventory may have already been allocated to other shoppers.");
+    }
+
     const updated = {
-      ...orders[idx],
+      ...currentOrder,
       status: newStatus,
       updated_at: new Date().toISOString()
     };
@@ -145,6 +152,23 @@ export function OrdersProvider({ children }) {
           updated_at: updated.updated_at
         }).eq('id', orderId);
       if (error) throw error;
+    } else {
+      // Offline fallback: restore inventory in localStorage if transitioning to cancelled
+      if (currentOrder.status !== 'cancelled' && newStatus === 'cancelled' && Array.isArray(currentOrder.items)) {
+        try {
+          const prods = readJSON("petchup_products", []);
+          let changed = false;
+          currentOrder.items.forEach(it => {
+            const pIdx = prods.findIndex(p => p.id === it.id);
+            if (pIdx !== -1) {
+              prods[pIdx].stockQuantity = (prods[pIdx].stockQuantity || 0) + (it.qty || 1);
+              prods[pIdx].inStock = true;
+              changed = true;
+            }
+          });
+          if (changed) writeJSON("petchup_products", prods);
+        } catch (_) {}
+      }
     }
 
     const updatedList = [...orders];
@@ -155,9 +179,25 @@ export function OrdersProvider({ children }) {
   };
 
   const deleteOrder = async (orderId) => {
+    const target = orders.find(o => o.id === orderId);
     if (isConfigured()) {
       const { error } = await supabase.from('orders').delete().eq('id', orderId);
       if (error) throw error;
+    } else if (target && target.status !== 'cancelled' && Array.isArray(target.items)) {
+      // Offline fallback: restore inventory if deleting an active uncancelled order
+      try {
+        const prods = readJSON("petchup_products", []);
+        let changed = false;
+        target.items.forEach(it => {
+          const pIdx = prods.findIndex(p => p.id === it.id);
+          if (pIdx !== -1) {
+            prods[pIdx].stockQuantity = (prods[pIdx].stockQuantity || 0) + (it.qty || 1);
+            prods[pIdx].inStock = true;
+            changed = true;
+          }
+        });
+        if (changed) writeJSON("petchup_products", prods);
+      } catch (_) {}
     }
 
     const updatedList = orders.filter(o => o.id !== orderId);

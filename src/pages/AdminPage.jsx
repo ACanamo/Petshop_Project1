@@ -9,6 +9,7 @@ import ProductModal from '../components/admin/ProductModal';
 import AnnouncementModal from '../components/admin/AnnouncementModal';
 import { formatPeso, getOrderStatusMeta } from '../lib/constants';
 import { supabase, SUPABASE_URL, isConfigured, testConnection } from '../lib/supabase';
+import { readJSON } from '../lib/storage';
 import { TrashIcon } from '@phosphor-icons/react';
 
 // Shared soft "play" card treatment — mirrors the rounded, softly-shadowed
@@ -150,10 +151,15 @@ export default function AdminPage() {
     return p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)) || p.category.toLowerCase().includes(q);
   });
 
+  const diskOrders = readJSON("petchup_orders", []) || [];
+  const displayOrders = (orders && orders.length > 0)
+    ? orders
+    : (Array.isArray(diskOrders) ? diskOrders : []).filter(o => o && o.id && !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
+
   const TABS = [
     { key: 'products', label: `📦 Products Catalog (${products.length})` },
     { key: 'announcements', label: `📢 Announcements (${announcements.length})` },
-    { key: 'orders', label: `🛍️ Orders Manager (${orders.length})` },
+    { key: 'orders', label: `🛍️ Orders Manager (${displayOrders.length})` },
     { key: 'sync', label: '☁️ Supabase Cloud' },
     { key: 'errors', label: `🐞 System Errors${errorLogs.length ? ` (${errorLogs.length})` : ''}` }
   ];
@@ -178,25 +184,27 @@ export default function AdminPage() {
               Store Management Console
             </span>
             <h1 style={{ margin: '2px 0 0', fontSize: '24px', fontWeight: 900, color: 'var(--play-charcoal)' }}>
-              ⚙️ Admin Dashboard
+              Pet Care Control Center
             </h1>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Link to="/shop" className="btn btn-outline btn-pill" style={{ fontSize: '13px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link
+              to="/shop"
+              className="btn btn-outline btn-pill"
+              style={{ fontSize: '13px' }}
+            >
               🛍️ View Live Shop
             </Link>
+
             <button
               type="button"
-              className="btn btn-pill"
-              onClick={async () => {
-                await logout();
-                navigate('/login');
-              }}
+              className="btn btn-outline btn-pill"
+              onClick={logout}
               style={{
-                background: '#FFE8EA',
-                border: '1.5px solid #FFC4CA',
+                borderColor: '#FFC4CA',
                 color: '#B82531',
+                background: '#FFF5F6',
                 fontWeight: 700,
                 fontSize: '13px'
               }}
@@ -210,7 +218,7 @@ export default function AdminPage() {
         <MetricsRibbon
           products={products}
           announcements={announcements}
-          orders={orders}
+          orders={displayOrders}
         />
 
         {/* Tab Navigation (pill style, matches shop toolbar filters) */}
@@ -516,7 +524,7 @@ export default function AdminPage() {
                   {loadingOrders ? "🔄 Syncing Orders..." : "🔄 Refresh Orders"}
                 </button>
 
-                {orders.length > 0 && (
+                {displayOrders.length > 0 && (
                   <button
                     type="button"
                     onClick={() => {
@@ -541,7 +549,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {orders.length === 0 ? (
+            {displayOrders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                 <div style={{ fontSize: '54px', marginBottom: '12px' }}>🎾</div>
                 <h4 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px', color: 'var(--play-charcoal)' }}>
@@ -574,7 +582,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.map(order => {
+                    {displayOrders.map(order => {
                       const statusMeta = getOrderStatusMeta(order.status);
                       const isCloud = order.id && (order.id.length > 25 || !order.id.startsWith('ord-17'));
                       return (

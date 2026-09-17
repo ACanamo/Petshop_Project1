@@ -38,7 +38,28 @@ export function OrdersProvider({ children }) {
     prevUserRef.current = user;
   }, [user]);
 
-  // Sync orders with Supabase
+  // Listen for storage events and internal order updates across tabs and components
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (!e.key || e.key === STORAGE_KEY_ORDERS || e.type === 'petchup_orders_updated') {
+        const disk = readJSON(STORAGE_KEY_ORDERS, []);
+        if (Array.isArray(disk)) {
+          const clean = disk.filter(o => o && o.id && !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
+          setOrders(clean);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('petchup_orders_updated', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('petchup_orders_updated', handleStorageChange);
+    };
+  }, []);
+
+  // Sync orders with Supabase without ever erasing local disk orders
   const syncOrders = useCallback(async () => {
     if (!isConfigured()) return;
     setLoadingOrders(true);
@@ -58,11 +79,24 @@ export function OrdersProvider({ children }) {
       if (Array.isArray(data)) {
         const cleanCloud = data.filter(o => !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
         
-        // Merge cloud orders with locally created fallback orders that haven't reached the cloud yet
+        // Merge cloud orders with locally stored disk orders so fallback/local transactions are NEVER wiped
         setOrders(prevOrders => {
-          const cloudIds = new Set(cleanCloud.map(o => o.id));
-          const localOnly = (prevOrders || []).filter(o => o && o.id && !cloudIds.has(o.id) && !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
-          const merged = [...cleanCloud, ...localOnly];
+          const diskOrders = readJSON(STORAGE_KEY_ORDERS, []) || [];
+          const combined = [
+            ...cleanCloud,
+            ...(prevOrders || []),
+            ...(Array.isArray(diskOrders) ? diskOrders : [])
+          ];
+          
+          const map = new Map();
+          for (const item of combined) {
+            if (item && item.id && !["ord-1001", "ord-1002", "ord-1003"].includes(item.id)) {
+              if (!map.has(item.id)) {
+                map.set(item.id, item);
+              }
+            }
+          }
+          const merged = Array.from(map.values());
           merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
           writeJSON(STORAGE_KEY_ORDERS, merged);
           return merged;
@@ -82,6 +116,25 @@ export function OrdersProvider({ children }) {
   const saveOrdersList = (newList) => {
     setOrders(newList);
     writeJSON(STORAGE_KEY_ORDERS, newList);
+    window.dispatchEvent(new CustomEvent('petchup_orders_updated', { detail: newList }));
+  };
+
+  const recordNewOrder = (order) => {
+    setOrders(prevOrders => {
+      const diskOrders = readJSON(STORAGE_KEY_ORDERS, []) || [];
+      const combined = [order, ...(prevOrders || []), ...(Array.isArray(diskOrders) ? diskOrders : [])];
+      const map = new Map();
+      for (const it of combined) {
+        if (it && it.id && !["ord-1001", "ord-1002", "ord-1003"].includes(it.id)) {
+          if (!map.has(it.id)) map.set(it.id, it);
+        }
+      }
+      const list = Array.from(map.values());
+      list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      writeJSON(STORAGE_KEY_ORDERS, list);
+      window.dispatchEvent(new CustomEvent('petchup_orders_updated', { detail: list }));
+      return list;
+    });
   };
 
   const createOrder = async (orderData) => {
@@ -123,8 +176,7 @@ export function OrdersProvider({ children }) {
           // Otherwise (e.g. permission denied, network stall, or unknown product id), log and fall back to offline creation
           logError('OrdersContext.place_order_cloud_fallback', error);
         } else if (data) {
-          const updatedList = [data, ...orders];
-          saveOrdersList(updatedList);
+          recordNewOrder(data);
           return data;
         }
       } catch (err) {
@@ -176,9 +228,7 @@ export function OrdersProvider({ children }) {
       if (changed) writeJSON("petchup_products", prods);
     } catch (_) {}
 
-    const updatedList = [newOrder, ...orders];
-    saveOrdersList(updatedList);
-
+    recordNewOrder(newOrder);
     return newOrder;
   };
 

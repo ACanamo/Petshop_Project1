@@ -14,11 +14,16 @@ export default function ShopPage() {
   const [selectedPet, setSelectedPet] = useState('all');
   const [sortBy, setSortBy] = useState('popular');
 
-  // Sync category filter from URL parameter (e.g. /shop?cat=feeds)
+  // Sync category filter and search query from URL parameter (e.g. /shop?cat=feeds or /shop?q=chew)
   useEffect(() => {
     const cat = searchParams.get('cat')?.toLowerCase();
     const validCategories = ['feeds', 'accessories', 'grooming', 'wellness'];
     setSelectedCategory(validCategories.includes(cat) ? cat : 'all');
+
+    const q = searchParams.get('q');
+    if (q !== null) {
+      setSearch(q);
+    }
   }, [searchParams]);
 
   const handleCategoryChange = (category) => {

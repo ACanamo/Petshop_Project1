@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   GearIcon as Gear,
@@ -12,7 +12,8 @@ import {
   DropIcon as Drop,
   PillIcon as Pill,
   ShoppingCartSimpleIcon as ShoppingCartSimple,
-  CaretDownIcon as CaretDown
+  CaretDownIcon as CaretDown,
+  MagnifyingGlassIcon as MagnifyingGlass
 } from '@phosphor-icons/react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -21,13 +22,14 @@ import { useOrders } from '../../context/OrdersContext';
 export default function Header() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { totalCount, openCart } = useCart();
   const { user, isAdmin, logout } = useAuth();
   const { openOrderHistory } = useOrders();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Playful bump on the cart icon whenever an item is added.
+  // Playful bump on the cart button whenever an item is added
   const [cartBump, setCartBump] = useState(false);
   const prevTotalCount = useRef(totalCount);
   const bumpTimer = useRef(null);
@@ -42,11 +44,31 @@ export default function Header() {
     return () => window.clearTimeout(bumpTimer.current);
   }, [totalCount]);
 
+  // Close dropdown on outside click
+  const dropdownRef = useRef(null);
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setUserDropdownOpen(false);
+      }
+    }
+    if (userDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userDropdownOpen]);
+
   const toggleMobileNav = () => setMobileNavOpen(prev => !prev);
   const closeMobileNav = () => setMobileNavOpen(false);
 
-  // Desktop nav items — a single source of truth drives both the links and
-  // the sliding "glide" highlight pill behind the hovered/active item.
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/shop?q=${encodeURIComponent(searchQuery.trim())}`);
+      closeMobileNav();
+    }
+  };
+
   const navItems = [
     { key: 'home', to: '/', label: 'Home', isActive: location.pathname === '/' },
     { key: 'shop', to: '/shop', label: 'Shop All', isActive: location.pathname === '/shop' && !location.search },
@@ -55,115 +77,86 @@ export default function Header() {
     { key: 'grooming', to: '/shop?cat=grooming', label: 'Grooming', isActive: location.search.includes('grooming') },
     { key: 'wellness', to: '/shop?cat=wellness', label: 'Wellness', isActive: location.search.includes('wellness') }
   ];
+
   if (isAdmin) {
     navItems.push({
       key: 'admin',
       to: '/admin',
-      label: 'Admin Panel',
+      label: 'Admin',
       isActive: location.pathname === '/admin'
     });
   }
 
-  const [hoveredKey, setHoveredKey] = useState(null);
-  const activeItem = navItems.find(item => item.isActive);
-  const glideKey = hoveredKey || activeItem?.key || null;
-
-  const navTrackRef = useRef(null);
-  const itemRefs = useRef({});
-  const [glideStyle, setGlideStyle] = useState({ opacity: 0 });
-
-  const measureGlide = useCallback(() => {
-    const track = navTrackRef.current;
-    const el = glideKey ? itemRefs.current[glideKey] : null;
-    if (!track || !el) {
-      setGlideStyle({ opacity: 0 });
-      return;
-    }
-    const trackRect = track.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-    setGlideStyle({
-      opacity: 1,
-      width: elRect.width,
-      transform: `translateX(${elRect.left - trackRect.left}px)`
-    });
-  }, [glideKey]);
-
-  useLayoutEffect(() => {
-    measureGlide();
-  }, [measureGlide, navItems.length]);
-
-  useLayoutEffect(() => {
-    window.addEventListener('resize', measureGlide);
-    return () => window.removeEventListener('resize', measureGlide);
-  }, [measureGlide]);
-
   return (
-    <header className="site-header play-header" id="site-header">
-      <div className="wrap header-inner header-row">
+    <header className="petchup-header" id="site-header">
+      <div className="petchup-header-inner">
         {/* Brand Logo */}
-        <Link to="/" className="brand brand-logo" aria-label="PETCHUP Home" onClick={closeMobileNav}>
-          <span className="logo-mark" aria-hidden="true">🐾</span>
-          <span className="logo-text">PETCHUP</span>
+        <Link to="/" className="petchup-logo-wrap" aria-label="PETCHUP Home" onClick={closeMobileNav}>
+          <svg className="petchup-paw-logo" viewBox="0 0 24 24" width="28" height="28" fill="#E85923" aria-hidden="true">
+            <ellipse cx="6.5" cy="8.5" rx="2.4" ry="3.4" />
+            <ellipse cx="17.5" cy="8.5" rx="2.4" ry="3.4" />
+            <ellipse cx="10" cy="5" rx="2.2" ry="3.1" />
+            <ellipse cx="14" cy="5" rx="2.2" ry="3.1" />
+            <path d="M12 10.5 C8.5 10.5 6.2 13.5 6.7 17.2 C7.1 19.8 9.5 21.2 12 21.2 C14.5 21.2 16.9 19.8 17.3 17.2 C17.8 13.5 15.5 10.5 12 10.5 Z" />
+          </svg>
+          <span className="petchup-logo-text">PETCHUP</span>
         </Link>
 
-        {/* Desktop Navigation — glossy 3D pill track with a sliding highlight */}
-        <nav className="desktop-nav main-nav" aria-label="Primary Navigation">
-          <div className="nav-pill-track" ref={navTrackRef} onMouseLeave={() => setHoveredKey(null)}>
-            <span className="nav-pill-glide" style={glideStyle} aria-hidden="true" />
-            <ul className="nav-list">
-              {navItems.map(item => (
-                <li key={item.key}>
-                  <Link
-                    to={item.to}
-                    ref={(el) => { itemRefs.current[item.key] = el; }}
-                    className={`nav-link ${item.isActive ? 'is-active' : ''} ${glideKey === item.key ? 'is-glided' : ''}`}
-                    onMouseEnter={() => setHoveredKey(item.key)}
-                    onFocus={() => setHoveredKey(item.key)}
-                  >
-                    {item.icon}{item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {/* Desktop Navigation Links */}
+        <nav className="petchup-nav" aria-label="Main Navigation">
+          <ul className="petchup-nav-list">
+            {navItems.map(item => (
+              <li key={item.key} className="petchup-nav-item">
+                <Link
+                  to={item.to}
+                  className={`petchup-nav-link ${item.isActive ? 'active' : ''}`}
+                >
+                  {item.label}
+                  {item.isActive && <span className="petchup-nav-indicator" />}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </nav>
 
-        {/* Header Actions */}
-        <div className="header-actions">
-          {/* User Auth / Profile Dropdown */}
-          <div className="user-profile-menu" style={{ position: 'relative' }}>
+        {/* Search Bar */}
+        <form onSubmit={handleSearchSubmit} className="petchup-search-bar" role="search">
+          <MagnifyingGlass size={16} weight="bold" className="search-icon" aria-hidden="true" />
+          <input
+            type="search"
+            placeholder="Search products..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+            aria-label="Search products"
+          />
+        </form>
+
+        {/* Actions (User & Cart) */}
+        <div className="petchup-header-actions">
+          {/* User Account / Profile Dropdown */}
+          <div className="petchup-user-wrap" ref={dropdownRef}>
             {user ? (
-              <div className="user-btn-wrap">
+              <>
                 <button
                   type="button"
-                  className="btn btn-outline btn-pill header-user-btn"
+                  className="petchup-user-pill"
                   onClick={() => setUserDropdownOpen(prev => !prev)}
                   aria-expanded={userDropdownOpen}
                   aria-label="User Account Menu"
                 >
-                  <span className="user-avatar-mini">{user.petEmoji || "🐾"}</span>
-                  <span className="user-name-short">{user.name.split(' ')[0]}</span>
-                  <CaretDown size={12} weight="bold" className="dropdown-caret" aria-hidden="true" />
+                  <span className="user-avatar-circle">{user.petEmoji || "🐰"}</span>
+                  <span className="user-pill-name">{user.name.split(' ')[0]}</span>
+                  <CaretDown size={12} weight="bold" className="user-pill-caret" aria-hidden="true" />
                 </button>
 
                 {userDropdownOpen && (
-                  <div className="user-dropdown-menu" style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 8px)',
-                    right: 0,
-                    background: 'var(--play-cream, #FFFDF9)',
-                    border: '1px solid rgba(45, 49, 66, 0.08)',
-                    borderRadius: '22px',
-                    boxShadow: '0 20px 45px rgba(45, 49, 66, 0.16)',
-                    padding: '14px',
-                    minWidth: '220px',
-                    zIndex: 1000
-                  }}>
-                    <div className="user-dropdown-header" style={{ paddingBottom: '10px', borderBottom: '1.5px dashed rgba(45, 49, 66, 0.15)', marginBottom: '8px' }}>
-                      <strong style={{ display: 'block', fontSize: '14px', color: 'var(--play-charcoal, #2D3142)' }}>{user.name}</strong>
-                      <span style={{ fontSize: '12px', color: 'var(--play-muted, #6B7082)' }}>{user.email}</span>
+                  <div className="petchup-dropdown-menu">
+                    <div className="dropdown-user-header">
+                      <strong>{user.name}</strong>
+                      <span>{user.email}</span>
                       {user.petName && (
-                        <div style={{ fontSize: '11px', marginTop: '4px', color: 'var(--play-orange, #FF6B35)' }}>
+                        <div className="dropdown-pet-tag">
                           Pet: {user.petEmoji || "🐶"} {user.petName}
                         </div>
                       )}
@@ -171,46 +164,20 @@ export default function Header() {
 
                     <button
                       type="button"
-                      className="dropdown-item-btn"
+                      className="dropdown-menu-item"
                       onClick={() => {
                         setUserDropdownOpen(false);
                         openOrderHistory();
                       }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '9px 10px',
-                        background: 'none',
-                        border: 'none',
-                        borderRadius: '12px',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        color: 'var(--play-charcoal, #2D3142)',
-                        cursor: 'pointer',
-                        textAlign: 'left'
-                      }}
                     >
-                      <Package size={16} weight="bold" aria-hidden="true" /> My Order History
+                      <Package size={16} weight="bold" aria-hidden="true" /> My Orders
                     </button>
 
                     {isAdmin && (
                       <Link
                         to="/admin"
+                        className="dropdown-menu-item dropdown-admin-link"
                         onClick={() => setUserDropdownOpen(false)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          width: '100%',
-                          padding: '9px 10px',
-                          borderRadius: '12px',
-                          fontWeight: 600,
-                          fontSize: '13px',
-                          color: 'var(--color-purple)',
-                          textDecoration: 'none'
-                        }}
                       >
                         <Gear size={16} weight="bold" aria-hidden="true" /> Admin Dashboard
                       </Link>
@@ -218,204 +185,115 @@ export default function Header() {
 
                     <button
                       type="button"
-                      className="dropdown-item-btn"
+                      className="dropdown-menu-item signout"
                       onClick={async () => {
                         setUserDropdownOpen(false);
                         await logout();
                         navigate('/login');
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '9px 10px',
-                        background: 'none',
-                        border: 'none',
-                        borderRadius: '12px',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        color: '#ef4444',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        marginTop: '4px',
-                        borderTop: '1px solid rgba(45, 49, 66, 0.08)'
                       }}
                     >
                       <SignOut size={16} weight="bold" aria-hidden="true" /> Sign Out
                     </button>
                   </div>
                 )}
-              </div>
+              </>
             ) : (
               <button
                 type="button"
-                className="btn btn-outline btn-pill header-auth-btn"
+                className="petchup-user-pill guest"
                 onClick={() => navigate('/login')}
+                aria-label="Sign in"
               >
-                <UserCircle size={18} weight="bold" aria-hidden="true" />
-                <span className="auth-btn-label">Sign In</span>
+                <span className="user-avatar-circle">👤</span>
+                <span className="user-pill-name">Sign In</span>
               </button>
             )}
           </div>
 
-          {/* Cart Drawer Toggle */}
+          {/* Cart Pill Button */}
           <button
             type="button"
-            className={`btn btn-primary btn-pill cart-toggle-btn ${cartBump ? 'is-bumping' : ''}`}
+            className={`petchup-cart-btn ${cartBump ? 'is-bumping' : ''}`}
             id="cart-toggle-btn"
             onClick={openCart}
             aria-label={`Open Cart (${totalCount} items)`}
           >
-            <svg className="cart-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="9" cy="20" r="1" />
-              <circle cx="19" cy="20" r="1" />
-              <path d="M3 4h2l2.4 10.2a2 2 0 0 0 2 1.5h7.9a2 2 0 0 0 1.9-1.4L21 8H7" />
-            </svg>
-            <span className="cart-btn-label">Cart</span>
+            <ShoppingCartSimple size={18} weight="bold" className="cart-svg-icon" aria-hidden="true" />
+            <span className="cart-label">Cart</span>
             {totalCount > 0 && (
-              <span className={`cart-counter ${cartBump ? 'bump' : ''}`} id="cart-counter" aria-label={`${totalCount} items in cart`}>
+              <span className="cart-counter-badge" id="cart-counter">
                 {totalCount}
               </span>
             )}
           </button>
 
-          {/* Mobile Nav Toggle */}
+          {/* Mobile Menu Hamburger */}
           <button
             type="button"
-            className={`nav-toggle mobile-menu-toggle ${mobileNavOpen ? 'is-active' : ''}`}
+            className={`petchup-mobile-toggle ${mobileNavOpen ? 'is-active' : ''}`}
             id="nav-toggle"
             aria-expanded={mobileNavOpen}
             aria-label="Toggle navigation menu"
             onClick={toggleMobileNav}
           >
-            <span className="nav-toggle-bar bar"></span>
-            <span className="nav-toggle-bar bar"></span>
-            <span className="nav-toggle-bar bar"></span>
+            <span className="bar"></span>
+            <span className="bar"></span>
+            <span className="bar"></span>
           </button>
         </div>
       </div>
 
-      {/* Mobile Navigation Drawer */}
-      <nav
-        className={`mobile-nav ${mobileNavOpen ? 'is-open' : ''}`}
-        id="mobile-nav"
-        hidden={!mobileNavOpen}
-        aria-label="Mobile Navigation"
-      >
-        <div className="mobile-nav-inner">
-          <ul className="mobile-nav-list">
-            <li>
-              <Link to="/" className="mobile-nav-link" onClick={closeMobileNav}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <House size={18} weight="bold" aria-hidden="true" /> Home
-                </span>
-              </Link>
-            </li>
-            <li>
-              <Link to="/shop" className="mobile-nav-link" onClick={closeMobileNav}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Storefront size={18} weight="bold" aria-hidden="true" /> Shop All
-                </span>
-              </Link>
-            </li>
-            <li>
-              <Link to="/shop?cat=feeds" className="mobile-nav-link" onClick={closeMobileNav}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <ForkKnife size={18} weight="bold" aria-hidden="true" /> Feeds & Food
-                </span>
-              </Link>
-            </li>
-            <li>
-              <Link to="/shop?cat=accessories" className="mobile-nav-link" onClick={closeMobileNav}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <PawPrint size={18} weight="bold" aria-hidden="true" /> Toys & Accessories
-                </span>
-              </Link>
-            </li>
-            <li>
-              <Link to="/shop?cat=grooming" className="mobile-nav-link" onClick={closeMobileNav}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Drop size={18} weight="bold" aria-hidden="true" /> Grooming
-                </span>
-              </Link>
-            </li>
-            <li>
-              <Link to="/shop?cat=wellness" className="mobile-nav-link" onClick={closeMobileNav}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Pill size={18} weight="bold" aria-hidden="true" /> Health & Wellness
-                </span>
-              </Link>
-            </li>
-            {isAdmin && (
-              <li>
-                <Link to="/admin" className="mobile-nav-link" onClick={closeMobileNav} style={{ color: 'var(--color-purple)' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Gear size={18} weight="bold" aria-hidden="true" /> Admin Panel
-                  </span>
-                </Link>
-              </li>
-            )}
-          </ul>
+      {/* Mobile Drawer */}
+      <div className={`petchup-mobile-drawer ${mobileNavOpen ? 'open' : ''}`}>
+        <form onSubmit={handleSearchSubmit} className="mobile-search-form">
+          <MagnifyingGlass size={16} weight="bold" aria-hidden="true" />
+          <input
+            type="search"
+            placeholder="Search products..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </form>
 
-          <div className="mobile-nav-footer">
-            {user ? (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
-                  {user.petEmoji || "🐾"} Signed in as {user.name}
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-outline btn-pill btn-full"
-                  style={{ marginTop: '8px' }}
-                  onClick={() => {
-                    closeMobileNav();
-                    openOrderHistory();
-                  }}
-                >
-                  <Package size={16} weight="bold" aria-hidden="true" /> My Order History
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline btn-pill btn-full"
-                  style={{ marginTop: '8px', color: '#ef4444' }}
-                  onClick={async () => {
-                    closeMobileNav();
-                    await logout();
-                    navigate('/login');
-                  }}
-                >
-                  <SignOut size={16} weight="bold" aria-hidden="true" /> Sign Out
-                </button>
-              </div>
-            ) : (
+        <ul className="mobile-drawer-links">
+          {navItems.map(item => (
+            <li key={item.key}>
+              <Link to={item.to} onClick={closeMobileNav} className={item.isActive ? 'active' : ''}>
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mobile-drawer-footer">
+          {user ? (
+            <>
               <button
                 type="button"
-                className="btn btn-outline btn-pill btn-full"
-                style={{ marginBottom: '12px' }}
-                onClick={() => {
-                  closeMobileNav();
-                  navigate('/login');
-                }}
+                className="mobile-btn"
+                onClick={() => { closeMobileNav(); openOrderHistory(); }}
               >
-                <UserCircle size={18} weight="bold" aria-hidden="true" /> Sign In / Create Account
+                <Package size={16} weight="bold" /> My Orders
               </button>
-            )}
-
+              <button
+                type="button"
+                className="mobile-btn danger"
+                onClick={async () => { closeMobileNav(); await logout(); navigate('/login'); }}
+              >
+                <SignOut size={16} weight="bold" /> Sign Out
+              </button>
+            </>
+          ) : (
             <button
               type="button"
-              className="btn btn-primary btn-pill btn-full"
-              id="mobile-view-cart-btn"
-              onClick={() => {
-                closeMobileNav();
-                openCart();
-              }}
+              className="mobile-btn primary"
+              onClick={() => { closeMobileNav(); navigate('/login'); }}
             >
-              <ShoppingCartSimple size={18} weight="bold" aria-hidden="true" /> View Cart ({totalCount})
+              <UserCircle size={16} weight="bold" /> Sign In
             </button>
-          </div>
+          )}
         </div>
-      </nav>
+      </div>
     </header>
   );
 }

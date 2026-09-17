@@ -4636,13 +4636,13 @@ body.playful-body h4 {
 
 /* Playful Top Banner */
 body.playful-body .top-banner {
-  background: linear-gradient(90deg, #FFD166 0%, #FFE58F 100%) !important;
-  color: #2D3142 !important;
-  padding: 9px 16px;
-  font-size: 0.86rem;
-  font-weight: 600;
-  border-bottom: 1.5px solid rgba(0, 0, 0, 0.06);
-  min-height: 38px;
+  background: #E85923 !important;
+  color: #FFFFFF !important;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-bottom: none !important;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4656,7 +4656,7 @@ body.playful-body .banner-inner {
   gap: 10px;
   flex-wrap: wrap;
   line-height: 1.4;
-  color: #2D3142 !important;
+  color: #FFFFFF !important;
 }
 
 body.playful-body .banner-pill {

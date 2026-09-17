@@ -44,10 +44,11 @@
   --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-dtc: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-play: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-script: 'Caveat', cursive, sans-serif;
 
-  /* Playful Brand Tokens */
-  --play-orange: #FF6B35;
-  --play-orange-hover: #E85520;
+  /* Playful Warm Brand Tokens */
+  --play-orange: #E85923;
+  --play-orange-hover: #D04B19;
   --play-yellow: #FFD166;
   --play-yellow-hover: #F4C244;
   --play-teal: #06D6A0;
@@ -57,11 +58,20 @@
   --play-purple: #7B2CBF;
   --play-cream: #FFFDF9;
   --play-card-bg: #FFFFFF;
-  --play-charcoal: #2D3142;
-  --play-muted: #6B7082;
+  --play-charcoal: #232220;
+  --play-muted: #6B7280;
   --play-border: #F0ECE4;
-  --play-shadow: 0 10px 28px rgba(255, 107, 53, 0.08), 0 2px 8px rgba(45, 49, 66, 0.04);
-  --play-shadow-hover: 0 16px 36px rgba(255, 107, 53, 0.16), 0 4px 12px rgba(45, 49, 66, 0.06);
+  --play-shadow: 0 10px 28px rgba(232, 89, 35, 0.08), 0 2px 8px rgba(35, 34, 32, 0.04);
+  --play-shadow-hover: 0 16px 36px rgba(232, 89, 35, 0.14), 0 4px 12px rgba(35, 34, 32, 0.06);
+
+  /* Warm Redesign Palette Tokens */
+  --petchup-coral: #E85923;
+  --petchup-coral-hover: #D04B19;
+  --petchup-canvas: #FFFDF9;
+  --petchup-card-feeds: #FEECE2;
+  --petchup-card-accessories: #FEF3E2;
+  --petchup-card-grooming: #FCECEE;
+  --petchup-card-wellness: #EAF8E8;
 
   /* Minimalist DTC Brand Tokens */
   --dtc-canvas: #FFFFFF;

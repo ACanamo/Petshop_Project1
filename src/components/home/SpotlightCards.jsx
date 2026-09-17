@@ -6,29 +6,33 @@ const categories = [
     id: 'feeds',
     title: 'Feeds',
     link: '/shop?cat=feeds',
-    cardImage: '/images/card_feeds.jpg',
-    alt: 'Feeds category'
+    image: '/images/hd_category_feeds.jpg',
+    bgColor: '#F6D3C2',
+    alt: 'Feeds — ceramic bowl with nutritious dry kibbles'
   },
   {
     id: 'accessories',
     title: 'Accessories',
     link: '/shop?cat=accessories',
-    cardImage: '/images/card_accessories.jpg',
-    alt: 'Accessories category'
+    image: '/images/hd_category_accessories.jpg',
+    bgColor: '#FAD89A',
+    alt: 'Accessories — chew rope, collar, and ball'
   },
   {
     id: 'grooming',
     title: 'Grooming',
     link: '/shop?cat=grooming',
-    cardImage: '/images/card_grooming.jpg',
-    alt: 'Grooming category'
+    image: '/images/hd_category_grooming.jpg',
+    bgColor: '#F2C8CD',
+    alt: 'Grooming — towel, brush, and shampoo'
   },
   {
     id: 'wellness',
     title: 'Wellness',
     link: '/shop?cat=wellness',
-    cardImage: '/images/card_wellness.jpg',
-    alt: 'Wellness category'
+    image: '/images/hd_category_wellness.jpg',
+    bgColor: '#C9E0D0',
+    alt: 'Wellness — supplements, bowl, and bone'
   }
 ];
 
@@ -56,21 +60,36 @@ export default function SpotlightCards() {
           </p>
         </div>
 
-        {/* 4 Pastel Category Cards */}
+        {/* 4 HD Category Cards */}
         <div className="needs-grid">
           {categories.map((cat) => (
             <Link
               key={cat.id}
               to={cat.link}
-              className="needs-card-link"
+              className="needs-hd-card"
+              style={{ backgroundColor: cat.bgColor }}
               aria-label={`Shop ${cat.title}`}
             >
-              <img
-                src={cat.cardImage}
-                alt={cat.alt}
-                className="needs-card-img"
-                loading="lazy"
-              />
+              {/* Card Header (Title & Arrow) */}
+              <div className="needs-hd-card-header">
+                <h3 className="needs-hd-card-title">{cat.title}</h3>
+                <span className="needs-hd-card-arrow" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </span>
+              </div>
+
+              {/* HD Product Photo */}
+              <div className="needs-hd-photo-wrap">
+                <img
+                  src={cat.image}
+                  alt={cat.alt}
+                  className="needs-hd-photo"
+                  loading="lazy"
+                />
+              </div>
             </Link>
           ))}
         </div>

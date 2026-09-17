@@ -14,6 +14,7 @@ import OrderHistoryModal from './components/orders/OrderHistoryModal';
 import InvoiceModal from './components/orders/InvoiceModal';
 import ProductQuickViewModal from './components/shop/ProductQuickViewModal';
 import SessionExpiryNotice from './components/common/SessionExpiryNotice';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -81,16 +82,18 @@ export default function App() {
                 <Header />
 
                 <div style={{ flex: 1 }}>
-                  <Suspense fallback={<PageFallback />}>
-                    <Routes>
-                      <Route path="/" element={<HomePage />} />
-                      <Route path="/shop" element={<ShopPage />} />
-                      <Route path="/reset-password" element={<ResetPasswordPage />} />
-                      <Route path="/login" element={<LoginPage />} />
-                      <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
-                      <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                  </Suspense>
+                  <ErrorBoundary>
+                    <Suspense fallback={<PageFallback />}>
+                      <Routes>
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="/shop" element={<ShopPage />} />
+                        <Route path="/reset-password" element={<ResetPasswordPage />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </Suspense>
+                  </ErrorBoundary>
                 </div>
 
                 <ConditionalFooter />

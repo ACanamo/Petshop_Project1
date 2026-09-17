@@ -3,6 +3,7 @@ import { supabase, isConfigured } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { readJSON, writeJSON } from '../lib/storage';
 import { logError } from '../lib/errorLog';
+import { placeOrder } from '../lib/placeOrder';
 
 const OrdersContext = createContext();
 
@@ -31,10 +32,13 @@ export function OrdersProvider({ children }) {
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
-  // Preserve local order history so checkout transactions placed during testing,
-  // offline sessions, or fallback mode remain visible in the Admin Panel across logins.
+  // Clear sensitive order history on sign-out
   const prevUserRef = useRef(user);
   useEffect(() => {
+    if (prevUserRef.current && !user) {
+      setOrders([]);
+      localStorage.removeItem(STORAGE_KEY_ORDERS);
+    }
     prevUserRef.current = user;
   }, [user]);
 
@@ -59,9 +63,12 @@ export function OrdersProvider({ children }) {
     };
   }, []);
 
-  // Sync orders with Supabase without ever erasing local disk orders
+  // Sync orders with Supabase for authenticated users or admins
   const syncOrders = useCallback(async () => {
-    if (!isConfigured()) return;
+    if (!isConfigured() || !user) {
+      setLoadingOrders(false);
+      return;
+    }
     setLoadingOrders(true);
 
     try {
@@ -70,7 +77,7 @@ export function OrdersProvider({ children }) {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!isAdmin && user) {
+      if (!isAdmin) {
         query = query.eq('customer_id', user.id);
       }
       const { data, error } = await query;
@@ -138,97 +145,19 @@ export function OrdersProvider({ children }) {
   };
 
   const createOrder = async (orderData) => {
-    const items = orderData.items || [];
-    const customerId = orderData.customerId || user?.id || null;
-    const customerName = orderData.customerName || user?.name || "Guest Pet Parent";
-    const customerEmail = orderData.customerEmail || user?.email || "";
-    const petName = orderData.petName || user?.petName || "";
-    const discountCode = orderData.discountCode || "";
-
-    if (isConfigured()) {
-      // Wrap place_order in a 6-second timeout so the UI never hangs indefinitely on "Processing...".
-      // TIMED_OUT is a resolved sentinel (not a rejection) so Promise.race never leaves an
-      // unhandled rejection lying around if the real RPC promise settles after the timer fires.
-      const TIMED_OUT = Symbol('place_order_timeout');
-      let raced;
-      try {
-        const rpcPromise = supabase.rpc('place_order', {
-          p_pet_name: petName,
-          p_items: items,
-          p_discount_code: discountCode
-        });
-
-        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(TIMED_OUT), 6000));
-
-        raced = await Promise.race([rpcPromise, timeoutPromise]);
-      } catch (err) {
-        // The request never reached Supabase at all (offline, DNS failure, CORS, etc.) —
-        // this is the one legitimate reason to fall back to a local-only order below.
-        logError('OrdersContext.createOrder_network_fallback', err);
-        raced = TIMED_OUT;
-      }
-
-      if (raced === TIMED_OUT) {
-        logError('OrdersContext.createOrder_timeout_fallback', new Error('place_order did not respond within 6s'));
-        // Falls through to the offline fallback below — we genuinely have no verdict from the database.
-      } else {
-        const { data, error } = raced;
-        if (error) {
-          // The database DID respond — every rejection it can raise (stock, coupon reuse,
-          // unknown/stale product id, rate limit, invalid quantity, expired session, or any
-          // other server-side error) must reach the customer as a real checkout failure.
-          // Silently swallowing this into a fake "successful" local-only order was the bug:
-          // the order would only ever exist in this one browser's localStorage and could
-          // never appear in the Admin Panel, which reads orders live from Supabase.
-          throw new Error(error.message);
-        }
-        if (data) {
-          recordNewOrder(data);
-          return data;
-        }
-      }
+    if (!isConfigured()) {
+      throw new Error("Checkout is unavailable until the store is connected. Your cart has been kept.");
     }
 
-    // Offline / local fallback — only reached when Supabase isn't configured, or the request
-    // above genuinely never got a response (see TIMED_OUT / network-failure branches above).
-    // Flagged with _offlineFallback so callers (e.g. CartDrawer) know this order was never
-    // written to Supabase and skip any deduction logic already handled by place_order().
-    const newOrder = {
-      id: "ord-" + Date.now(),
-      customer_id: customerId,
-      customer_name: customerName,
-      customer_email: customerEmail,
-      pet_name: petName,
-      items,
-      item_count: items.reduce((sum, it) => sum + (it.qty || 1), 0),
-      subtotal: parseFloat(Number(orderData.subtotal || 0).toFixed(2)),
-      discount_code: discountCode,
-      discount_amount: parseFloat(Number(orderData.discountAmount || 0).toFixed(2)),
-      total: parseFloat(Number(orderData.total || 0).toFixed(2)),
-      status: "pending",
-      created_at: new Date().toISOString(),
-      _offlineFallback: true
-    };
-
-    // Deduct stock in localStorage for offline consistency
-    try {
-      const prods = readJSON("petchup_products", []);
-      let changed = false;
-      items.forEach(it => {
-        const pIdx = prods.findIndex(p => p.id === it.id);
-        if (pIdx !== -1) {
-          const deductQty = parseInt(it.qty, 10) || 1;
-          const newQty = Math.max(0, (prods[pIdx].stockQuantity ?? 10) - deductQty);
-          prods[pIdx].stockQuantity = newQty;
-          prods[pIdx].inStock = newQty > 0;
-          changed = true;
-        }
-      });
-      if (changed) writeJSON("petchup_products", prods);
-    } catch (_) {}
-
-    recordNewOrder(newOrder);
-    return newOrder;
+    // Only a confirmed server order can be recorded or shown as successful.
+    // Inventory is deducted by place_order, never by a separate browser write.
+    const order = await placeOrder(supabase, {
+      p_pet_name: orderData.petName || user?.petName || "",
+      p_items: orderData.items || [],
+      p_discount_code: orderData.discountCode || ""
+    });
+    recordNewOrder(order);
+    return order;
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {

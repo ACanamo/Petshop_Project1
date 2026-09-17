@@ -365,17 +365,13 @@ export function StoreProvider({ children }) {
     }));
 
     if (isConfigured()) {
-      const { error } = await supabase.from('announcements').upsert(
-        list.map(ann => ({
-            id: ann.id,
-            pill: ann.pill,
-            text: ann.text,
-            link: ann.link,
-            link_text: ann.linkText,
-            is_active: ann.isActive
-          }))
-      );
-      if (error) throw error;
+      for (const ann of list) {
+        const { error } = await supabase
+          .from('announcements')
+          .update({ is_active: ann.isActive, updated_at: new Date().toISOString() })
+          .eq('id', ann.id);
+        if (error) throw error;
+      }
     }
 
     saveAnnouncementsList(list);
@@ -389,69 +385,6 @@ export function StoreProvider({ children }) {
 
     const list = announcements.filter(a => a.id !== id);
     saveAnnouncementsList(list);
-  };
-
-  const deductProductStock = async (orderedItems) => {
-    if (!Array.isArray(orderedItems) || orderedItems.length === 0) return;
-
-    // 1. Immediately update React state and localStorage
-    setProducts(prevProducts => {
-      const updatedCatalog = prevProducts.map(prod => {
-        const item = orderedItems.find(it => it.id === prod.id);
-        if (!item) return prod;
-        const deductQty = parseInt(item.qty, 10) || 1;
-        const newStock = Math.max(0, (prod.stockQuantity ?? 10) - deductQty);
-        return {
-          ...prod,
-          stockQuantity: newStock,
-          inStock: newStock > 0
-        };
-      });
-      writeJSON(STORAGE_KEY_PRODUCTS, updatedCatalog);
-      return updatedCatalog;
-    });
-
-    // 2. Persist deduction to Supabase products table
-    if (isConfigured()) {
-      try {
-        // Try atomic RPC procedure first (SECURITY DEFINER)
-        const payload = orderedItems.map(it => ({
-          id: it.id,
-          qty: parseInt(it.qty, 10) || 1
-        }));
-
-        const { error: rpcErr } = await supabase.rpc('deduct_product_stock', {
-          p_items: payload
-        });
-
-        // If RPC succeeds, done!
-        if (!rpcErr) return;
-
-        // If RPC is not created yet or fails, fallback to direct column updates
-        for (const item of orderedItems) {
-          const deductQty = parseInt(item.qty, 10) || 1;
-          const { data: dbProd } = await supabase
-            .from('products')
-            .select('stock_quantity')
-            .eq('id', item.id)
-            .maybeSingle();
-
-          if (dbProd && typeof dbProd.stock_quantity === 'number') {
-            const newCloudStock = Math.max(0, dbProd.stock_quantity - deductQty);
-            await supabase
-              .from('products')
-              .update({
-                stock_quantity: newCloudStock,
-                in_stock: newCloudStock > 0,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', item.id);
-          }
-        }
-      } catch (err) {
-        logError('StoreContext.deductProductStock_cloud', err);
-      }
-    }
   };
 
   const today = new Date().toISOString().slice(0, 10);
@@ -472,7 +405,6 @@ export function StoreProvider({ children }) {
       updateAnnouncement,
       toggleAnnouncementActive,
       deleteAnnouncement,
-      deductProductStock,
       syncFromSupabase,
       selectedProduct,
       openProductView,

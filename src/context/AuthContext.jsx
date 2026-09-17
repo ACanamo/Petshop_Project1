@@ -35,9 +35,8 @@ async function buildCustomer(authUser) {
   // status didn't actually live in one place: the DB role column could say
   // 'customer' and this would still grant admin. See is_admin() in
   // supabase_schema.sql for the matching server-side fix — that email is
-  // now only ever used once, as the one-time bootstrap seed.
   const isPrimaryAdmin = Boolean(email && PRIMARY_ADMIN_EMAIL && email.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase());
-  const role = profile?.role === 'admin' || appRole === 'admin' || isPrimaryAdmin ? 'admin' : 'user';
+  const role = profile?.role === 'admin' || appRole === 'admin' || isPrimaryAdmin ? 'admin' : 'customer';
 
   return {
     id: authUser.id,
@@ -273,7 +272,7 @@ export function AuthProvider({ children }) {
           id: authUser ? authUser.id : ("cust-" + Date.now()),
           name: name.trim(),
           email: email.trim().toLowerCase(),
-          role: "user",
+          role: "customer",
           petName: petName || "Buddy",
           petType: petType || "dog",
           petEmoji: petEmoji,
@@ -291,7 +290,7 @@ export function AuthProvider({ children }) {
         id: "cust-" + Date.now(),
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        role: email.trim().toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase() ? "admin" : "user",
+        role: email.trim().toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase() ? "admin" : "customer",
         petName: petName || "Buddy",
         petType: petType || "dog",
         petEmoji: petEmoji,

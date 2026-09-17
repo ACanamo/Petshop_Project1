@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   pill TEXT NOT NULL DEFAULT '📢 ANNOUNCEMENT',
   title TEXT DEFAULT '',
   text TEXT NOT NULL,
-  link TEXT DEFAULT 'shop.html',
+  link TEXT DEFAULT '/shop',
   link_text TEXT DEFAULT 'Shop Deals →',
   start_date DATE,
   end_date DATE,
@@ -99,6 +99,17 @@ ALTER TABLE public.products ADD COLUMN IF NOT EXISTS rating NUMERIC(2, 1) NOT NU
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS popularity INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Enforce non-negative inventory on products
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'chk_products_stock_nonnegative'
+  ) THEN
+    ALTER TABLE public.products ADD CONSTRAINT chk_products_stock_nonnegative CHECK (stock_quantity >= 0);
+  END IF;
+END;
+$$;
 
 -- Multi-image gallery support: `images` holds an ordered list of URLs
 -- (images[0] is the cover shown on product cards). `image_url` is kept
@@ -502,24 +513,24 @@ GRANT UPDATE (name, pet_name, pet_type, pet_emoji, member_tier, updated_at)
 -- ==============================================================================
 -- 9. INITIAL PRODUCTION CATALOG
 -- ==============================================================================
-INSERT INTO public.products (id, sku, name, category, category_label, pet, price, original_price, stock_quantity, in_stock, img, badge, badge_class, tint_class, "desc", price_history)
+INSERT INTO public.products (id, sku, name, category, category_label, pet, price, original_price, stock_quantity, in_stock, img, image_url, images, badge, badge_class, tint_class, "desc", price_history)
 VALUES
-('p1', 'PET-FEE-001', 'Salmon & Sweet Potato Crunchies (12lb)', 'feeds', 'Feeds & Dry Food', 'dog', 34.99, 41.99, 25, true, '🥩', 'Top Pick', 'badge-bestseller', 'bg-yellow-tint', 'Oven-baked whole feeds with ancient grains and omega-3s for energy and shiny coats.', '[{"price": 34.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p2', 'PET-FEE-002', 'Pasture Duck Stew Cans (Pack of 6)', 'feeds', 'Canned Wet Feeds', 'dog', 22.50, 0, 40, true, '🥫', 'New Recipe', 'badge-new', 'bg-coral-tint', 'Slow-braised duck in 18-hour marrow bone broth. Zero gums or fillers.', '[{"price": 22.50, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p3-cat', 'PET-FEE-003', 'Wild Pacific Salmon & Kelp Pate (Pack of 6)', 'feeds', 'Canned Wet Feeds', 'cat', 19.99, 24.00, 30, true, '🐟', 'Feline Favorite', 'badge-popular', 'bg-teal-tint', 'Smooth, high-moisture salmon puree with taurine and kelp for finicky eaters.', '[{"price": 19.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p3', 'PET-ACC-001', 'Rainbow Weave No-Pull Leash & Collar Set', 'accessories', 'Accessories', 'dog', 24.99, 29.99, 15, true, '🌈', 'Fan Favorite', 'badge-popular', 'bg-teal-tint', 'High-tensile climbing rope weave with padded handle and corrosion-proof hardware.', '[{"price": 24.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p4', 'PET-ACC-002', 'Cloud-Comfort Donut Calming Bed', 'accessories', 'Accessories', 'all', 42.00, 54.00, 12, true, '🛏️', 'Ultra Soft', 'badge-bestseller', 'bg-orange-tint', 'Raised rim creates cozy security to relieve pet anxiety. Machine washable cover.', '[{"price": 42.00, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p5', 'PET-ACC-003', 'Squishy Squeak Donut & Bone Bundle', 'accessories', 'Toys & Play', 'dog', 14.99, 19.99, 50, true, '🍩', 'Super Squeak', 'badge-fun', 'bg-coral-tint', 'Double-layer plush with puncture-resistant squeakers that keep squeaking.', '[{"price": 14.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p7-cat-collar', 'PET-ACC-004', 'Velvet-Soft Breakaway Safety Collar', 'accessories', 'Accessories', 'cat', 14.50, 18.00, 35, true, '🎀', 'Safety Quick-Release', 'badge-health', 'bg-yellow-tint', 'Gentle elastic breakaway buckle prevents snagging on outdoor adventures.', '[{"price": 14.50, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p6', 'PET-WEL-001', 'Wild Alaskan Salmon Shiny Coat Oil (16oz)', 'wellness', 'Wellness', 'all', 18.50, 22.00, 28, true, '🐟', 'Shiny Coat', 'badge-health', 'bg-teal-tint', 'Pure cold-pressed salmon oil packed with EPA and DHA for itchy skin and shiny fur.', '[{"price": 18.50, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p8-broth', 'PET-FEE-004', 'Slow-Simmered Beef Bone Broth Topper (16oz)', 'feeds', 'Feeds & Toppers', 'all', 12.99, 15.99, 45, true, '🍲', 'Hydration Hit', 'badge-bestseller', 'bg-coral-tint', 'Rich collagen elixir simmered for 18 hours. Entices fussy eaters instantly.', '[{"price": 12.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p9-kibble-chick', 'PET-FEE-005', 'Free-Range Chicken & Ancient Grains (10lb)', 'feeds', 'Feeds & Dry Food', 'dog', 31.50, 38.00, 20, true, '🍗', 'Oven Baked', 'badge-popular', 'bg-yellow-tint', 'Slow baked with chia seeds, millet, and fresh cage-free chicken.', '[{"price": 31.50, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p10-shampoo', 'PET-GRO-001', 'Soothing Oatmeal & Honey Dog Wash (16oz)', 'grooming', 'Grooming', 'dog', 15.99, 19.99, 30, true, '🧴', 'Tear-Free', 'badge-health', 'bg-teal-tint', 'Plant-based hypoallergenic formula relieves itchy skin and leaves a fresh clean scent.', '[{"price": 15.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p11-brush', 'PET-GRO-002', 'Magic-Release De-Shedding Pet Brush', 'grooming', 'Grooming', 'all', 16.50, 21.00, 22, true, '🪮', 'Easy Clean', 'badge-popular', 'bg-orange-tint', 'Removes loose undercoat fur with one-click hair release button. Ergonomic grip.', '[{"price": 16.50, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p12-joint', 'PET-WEL-002', 'Hip & Joint Glucosamine Chews (90ct)', 'wellness', 'Wellness', 'dog', 26.99, 32.99, 18, true, '🦴', 'Vet Recommended', 'badge-health', 'bg-coral-tint', 'Daily soft chews with chondroitin, MSM, and organic turmeric for bouncy agility.', '[{"price": 26.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p13-cat-tree', 'PET-ACC-005', 'Cozy Cloud Multi-Tier Cat Scratching Tree', 'accessories', 'Accessories', 'cat', 58.00, 72.00, 8, true, '🌳', 'Cat Approved', 'badge-bestseller', 'bg-teal-tint', 'Natural sisal rope pillars with ultra-plush observation perches and hammock.', '[{"price": 58.00, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p14-cat-grass', 'PET-WEL-003', 'Organic Sweet Wheatgrass Grow Kit', 'wellness', 'Wellness', 'cat', 11.99, 14.99, 40, true, '🌱', '100% Organic', 'badge-health', 'bg-yellow-tint', 'Sprouts in just 5 days! Helps hairball control and digestive health naturally.', '[{"price": 11.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
-('p15-dental', 'PET-WEL-004', 'Fresh Breath Dental Care Water Additive', 'wellness', 'Wellness', 'all', 13.99, 17.50, 35, true, '💧', 'Clean Teeth', 'badge-health', 'bg-teal-tint', 'Tasteless water additive eliminates plaque and freshens breath for both cats and dogs.', '[{"price": 13.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb)
+('p1', 'PET-FEE-001', 'Salmon & Sweet Potato Crunchies (12lb)', 'feeds', 'Feeds & Dry Food', 'dog', 34.99, 41.99, 25, true, '🥩', 'https://images.unsplash.com/photo-1568640347023-a616a30bc3bd?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1568640347023-a616a30bc3bd?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Top Pick', 'badge-bestseller', 'bg-yellow-tint', 'Oven-baked whole feeds with ancient grains and omega-3s for energy and shiny coats.', '[{"price": 34.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p2', 'PET-FEE-002', 'Pasture Duck Stew Cans (Pack of 6)', 'feeds', 'Canned Wet Feeds', 'dog', 22.50, 0, 40, true, '🥫', 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'New Recipe', 'badge-new', 'bg-coral-tint', 'Slow-braised duck in 18-hour marrow bone broth. Zero gums or fillers.', '[{"price": 22.50, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p3-cat', 'PET-FEE-003', 'Wild Pacific Salmon & Kelp Pate (Pack of 6)', 'feeds', 'Canned Wet Feeds', 'cat', 19.99, 24.00, 30, true, '🐟', 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Feline Favorite', 'badge-popular', 'bg-teal-tint', 'Smooth, high-moisture salmon puree with taurine and kelp for finicky eaters.', '[{"price": 19.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p3', 'PET-ACC-001', 'Rainbow Weave No-Pull Leash & Collar Set', 'accessories', 'Accessories', 'dog', 24.99, 29.99, 15, true, '🌈', 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Fan Favorite', 'badge-popular', 'bg-teal-tint', 'High-tensile climbing rope weave with padded handle and corrosion-proof hardware.', '[{"price": 24.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p4', 'PET-ACC-002', 'Cloud-Comfort Donut Calming Bed', 'accessories', 'Accessories', 'all', 42.00, 54.00, 12, true, '🛏️', 'https://images.unsplash.com/photo-1541599540903-216a46ca1dc0?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1541599540903-216a46ca1dc0?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Ultra Soft', 'badge-bestseller', 'bg-orange-tint', 'Raised rim creates cozy security to relieve pet anxiety. Machine washable cover.', '[{"price": 42.00, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p5', 'PET-ACC-003', 'Squishy Squeak Donut & Bone Bundle', 'accessories', 'Toys & Play', 'dog', 14.99, 19.99, 50, true, '🍩', 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Super Squeak', 'badge-fun', 'bg-coral-tint', 'Double-layer plush with puncture-resistant squeakers that keep squeaking.', '[{"price": 14.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p7-cat-collar', 'PET-ACC-004', 'Velvet-Soft Breakaway Safety Collar', 'accessories', 'Accessories', 'cat', 14.50, 18.00, 35, true, '🎀', 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Safety Quick-Release', 'badge-health', 'bg-yellow-tint', 'Gentle elastic breakaway buckle prevents snagging on outdoor adventures.', '[{"price": 14.50, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p6', 'PET-WEL-001', 'Wild Alaskan Salmon Shiny Coat Oil (16oz)', 'wellness', 'Wellness', 'all', 18.50, 22.00, 28, true, '🐟', 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Shiny Coat', 'badge-health', 'bg-teal-tint', 'Pure cold-pressed salmon oil packed with EPA and DHA for itchy skin and shiny fur.', '[{"price": 18.50, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p8-broth', 'PET-FEE-004', 'Slow-Simmered Beef Bone Broth Topper (16oz)', 'feeds', 'Feeds & Toppers', 'all', 12.99, 15.99, 45, true, '🍲', 'https://images.unsplash.com/photo-1544568100-847a948585b9?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1544568100-847a948585b9?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Hydration Hit', 'badge-bestseller', 'bg-coral-tint', 'Rich collagen elixir simmered for 18 hours. Entices fussy eaters instantly.', '[{"price": 12.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p9-kibble-chick', 'PET-FEE-005', 'Free-Range Chicken & Ancient Grains (10lb)', 'feeds', 'Feeds & Dry Food', 'dog', 31.50, 38.00, 20, true, '🍗', 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Oven Baked', 'badge-popular', 'bg-yellow-tint', 'Slow baked with chia seeds, millet, and fresh cage-free chicken.', '[{"price": 31.50, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p10-shampoo', 'PET-GRO-001', 'Soothing Oatmeal & Honey Dog Wash (16oz)', 'grooming', 'Grooming', 'dog', 15.99, 19.99, 30, true, '🧴', 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Tear-Free', 'badge-health', 'bg-teal-tint', 'Plant-based hypoallergenic formula relieves itchy skin and leaves a fresh clean scent.', '[{"price": 15.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p11-brush', 'PET-GRO-002', 'Magic-Release De-Shedding Pet Brush', 'grooming', 'Grooming', 'all', 16.50, 21.00, 22, true, '🪮', 'https://images.unsplash.com/photo-1535294435445-d7249524ef2e?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1535294435445-d7249524ef2e?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Easy Clean', 'badge-popular', 'bg-orange-tint', 'Removes loose undercoat fur with one-click hair release button. Ergonomic grip.', '[{"price": 16.50, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p12-joint', 'PET-WEL-002', 'Hip & Joint Glucosamine Chews (90ct)', 'wellness', 'Wellness', 'dog', 26.99, 32.99, 18, true, '🦴', 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Vet Recommended', 'badge-health', 'bg-coral-tint', 'Daily soft chews with chondroitin, MSM, and organic turmeric for bouncy agility.', '[{"price": 26.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p13-cat-tree', 'PET-ACC-005', 'Cozy Cloud Multi-Tier Cat Scratching Tree', 'accessories', 'Accessories', 'cat', 58.00, 72.00, 8, true, '🌳', 'https://images.unsplash.com/photo-1545249390-6bdfa286032f?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1545249390-6bdfa286032f?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Cat Approved', 'badge-bestseller', 'bg-teal-tint', 'Natural sisal rope pillars with ultra-plush observation perches and hammock.', '[{"price": 58.00, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p14-cat-grass', 'PET-WEL-003', 'Organic Sweet Wheatgrass Grow Kit', 'wellness', 'Wellness', 'cat', 11.99, 14.99, 40, true, '🌱', 'https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=600&q=80"]'::jsonb, '100% Organic', 'badge-health', 'bg-yellow-tint', 'Sprouts in just 5 days! Helps hairball control and digestive health naturally.', '[{"price": 11.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb),
+('p15-dental', 'PET-WEL-004', 'Fresh Breath Dental Care Water Additive', 'wellness', 'Wellness', 'all', 13.99, 17.50, 35, true, '💧', 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=600&q=80', '["https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=600&q=80"]'::jsonb, 'Clean Teeth', 'badge-health', 'bg-teal-tint', 'Tasteless water additive eliminates plaque and freshens breath for both cats and dogs.', '[{"price": 13.99, "changed_at": "2026-09-01T00:00:00Z", "note": "Initial catalog price"}]'::jsonb)
 ON CONFLICT (id) DO UPDATE SET
   sku            = EXCLUDED.sku,
   name           = EXCLUDED.name,
@@ -530,6 +541,8 @@ ON CONFLICT (id) DO UPDATE SET
   original_price = EXCLUDED.original_price,
   stock_quantity = EXCLUDED.stock_quantity,
   in_stock       = EXCLUDED.in_stock,
+  image_url      = EXCLUDED.image_url,
+  images         = EXCLUDED.images,
   img            = EXCLUDED.img,
   badge          = EXCLUDED.badge,
   badge_class    = EXCLUDED.badge_class,
@@ -539,9 +552,9 @@ ON CONFLICT (id) DO UPDATE SET
 -- Initial Announcements with Schedule
 INSERT INTO public.announcements (id, pill, title, text, link, link_text, start_date, end_date, is_active)
 VALUES
-('ann-1', '🎉 PAWTY SALE', 'Free 2-Day Shipping', 'Free 2-Day Shipping on all orders over ₱49 + Free chew toy in every box!', 'shop.html', 'Shop Treats & Feeds ->', CURRENT_DATE - INTERVAL '1 day', CURRENT_DATE + INTERVAL '30 days', true),
-('ann-2', '🐶 NEW PUPPY PACK', 'Starter Bundles', 'Save 20% on all First-Time Puppy & Kitten starter packs this week.', 'shop.html', 'View Bundles ->', CURRENT_DATE - INTERVAL '1 day', CURRENT_DATE + INTERVAL '14 days', false),
-('ann-3', '✨ VIP MEMBER PERK', 'First-Order Welcome', 'Use code FIRSTPAW20 at checkout for 20% off your first pet care haul!', 'shop.html', 'Claim Perk ->', CURRENT_DATE - INTERVAL '1 day', CURRENT_DATE + INTERVAL '90 days', false)
+('ann-1', '🎉 PAWTY SALE', 'Free 2-Day Shipping', 'Free 2-Day Shipping on all orders over ₱49 + Free chew toy in every box!', '/shop', 'Shop Treats & Feeds ->', CURRENT_DATE - INTERVAL '1 day', CURRENT_DATE + INTERVAL '30 days', true),
+('ann-2', '🐶 NEW PUPPY PACK', 'Starter Bundles', 'Save 20% on all First-Time Puppy & Kitten starter packs this week.', '/shop', 'View Bundles ->', CURRENT_DATE - INTERVAL '1 day', CURRENT_DATE + INTERVAL '14 days', false),
+('ann-3', '✨ VIP MEMBER PERK', 'First-Order Welcome', 'Use code FIRSTPAW20 at checkout for 20% off your first pet care haul!', '/shop', 'Claim Perk ->', CURRENT_DATE - INTERVAL '1 day', CURRENT_DATE + INTERVAL '90 days', false)
 ON CONFLICT (id) DO UPDATE SET
   pill       = EXCLUDED.pill,
   title      = EXCLUDED.title,
@@ -782,11 +795,12 @@ DECLARE
   v_customer_email TEXT;
   v_order_id TEXT := 'ord-' || replace(gen_random_uuid()::text, '-', '');
   v_normalized_code TEXT := UPPER(TRIM(COALESCE(p_discount_code, '')));
+  agg_item RECORD;
   item JSONB;
   v_product_id TEXT;
   v_qty INTEGER;
-  v_stock INTEGER;
-  v_name TEXT;
+  v_prod_record RECORD;
+  v_snapshot_items JSONB := '[]'::jsonb;
   new_order public.orders;
 BEGIN
   IF v_customer_id IS NULL THEN
@@ -804,9 +818,7 @@ BEGIN
     RAISE EXCEPTION 'Order must contain at least one item';
   END IF;
 
-  -- Reject upfront if this exact code was already redeemed by this
-  -- customer on a previous order — before touching stock or inserting
-  -- anything, same fail-fast approach as the stock check below.
+  -- Reject upfront if this exact code was already redeemed by this customer
   IF v_normalized_code <> '' AND EXISTS (
     SELECT 1 FROM public.coupon_redemptions
     WHERE customer_id = v_customer_id AND code = v_normalized_code
@@ -814,64 +826,94 @@ BEGIN
     RAISE EXCEPTION 'You''ve already used the coupon "%"', v_normalized_code;
   END IF;
 
-  -- Pass 1: lock and validate every line BEFORE writing anything, so a
-  -- shortage on item 3 doesn't leave items 1-2 already decremented.
+  -- Pass 1: Aggregate requested quantities per product ID and lock rows in deterministic order
+  -- Prevents overselling on duplicate line items and eliminates deadlock risk.
+  FOR agg_item IN
+    SELECT
+      it->>'id' AS product_id,
+      SUM(GREATEST(COALESCE((it->>'qty')::INTEGER, 0), 0)) AS aggregate_qty
+    FROM jsonb_array_elements(p_items) AS it
+    GROUP BY it->>'id'
+    ORDER BY it->>'id' ASC
+  LOOP
+    IF agg_item.product_id IS NULL OR agg_item.product_id = '' THEN
+      RAISE EXCEPTION 'Order contains an item with missing product id';
+    END IF;
+
+    IF agg_item.aggregate_qty <= 0 THEN
+      RAISE EXCEPTION 'Invalid item quantity in order';
+    END IF;
+
+    -- Row lock in deterministic order (ORDER BY product_id ASC)
+    SELECT id, name, price, img, image_url, stock_quantity
+    INTO v_prod_record
+    FROM public.products
+    WHERE id = agg_item.product_id
+    FOR UPDATE;
+
+    IF v_prod_record.id IS NULL THEN
+      RAISE EXCEPTION 'Unknown product % in order', agg_item.product_id;
+    END IF;
+
+    IF v_prod_record.stock_quantity < agg_item.aggregate_qty THEN
+      RAISE EXCEPTION 'Not enough stock for "%": only % left, % requested',
+        v_prod_record.name, v_prod_record.stock_quantity, agg_item.aggregate_qty;
+    END IF;
+  END LOOP;
+
+  -- Pass 2: Build immutable server snapshot using authoritative catalog prices and names
   FOR item IN SELECT * FROM jsonb_array_elements(p_items)
   LOOP
     v_product_id := item->>'id';
     v_qty := GREATEST(COALESCE((item->>'qty')::INTEGER, 0), 0);
 
-    IF v_qty <= 0 THEN
-      RAISE EXCEPTION 'Invalid item quantity in order';
-    END IF;
-
-    SELECT stock_quantity, name INTO v_stock, v_name
+    SELECT id, name, price, img, image_url
+    INTO v_prod_record
     FROM public.products
-    WHERE id = v_product_id
-    FOR UPDATE;
+    WHERE id = v_product_id;
 
-    IF v_stock IS NULL THEN
-      RAISE EXCEPTION 'Unknown product % in order', v_product_id;
-    END IF;
-
-    IF v_stock < v_qty THEN
-      RAISE EXCEPTION 'Not enough stock for "%": only % left, % requested', v_name, v_stock, v_qty;
-    END IF;
+    v_snapshot_items := v_snapshot_items || jsonb_build_array(
+      jsonb_build_object(
+        'id', v_product_id,
+        'name', v_prod_record.name,
+        'price', v_prod_record.price,
+        'qty', v_qty,
+        'img', COALESCE(v_prod_record.img, '🐾'),
+        'image_url', COALESCE(v_prod_record.image_url, '')
+      )
+    );
   END LOOP;
 
-  -- item_count/subtotal/discount_amount/total are placeholders — the
-  -- trg_validate_order_totals BEFORE INSERT trigger recomputes them from
-  -- the authoritative product prices (and the same fixed coupon table) before
-  -- the row is actually written.
+  -- Insert order with authoritative line-item snapshot.
+  -- trg_validate_order_totals BEFORE INSERT trigger recomputes subtotal, discount, and total.
   INSERT INTO public.orders (
     id, customer_id, customer_name, customer_email, pet_name,
     items, item_count, subtotal, discount_code, discount_amount, total, status, created_at
   ) VALUES (
     v_order_id, v_customer_id, v_customer_name, v_customer_email,
-    COALESCE(p_pet_name, ''), p_items, 0, 0, v_normalized_code, 0, 0, 'pending', NOW()
+    COALESCE(p_pet_name, ''), v_snapshot_items, 0, 0, v_normalized_code, 0, 0, 'pending', NOW()
   )
   RETURNING * INTO new_order;
 
-  -- Only record a redemption if the code actually produced a real discount
-  -- (trg_validate_order_totals is the sole source of truth for which codes
-  -- are valid) — an unrecognized or empty code just leaves nothing to track.
+  -- Record coupon redemption if a discount was recognized
   IF new_order.discount_amount > 0 THEN
     INSERT INTO public.coupon_redemptions (customer_id, code, order_id, redeemed_at)
     VALUES (v_customer_id, v_normalized_code, new_order.id, NOW());
   END IF;
 
-  -- Pass 2: the order committed (within this still-open transaction) and
-  -- every line already passed its stock check above — safe to deduct now.
-  FOR item IN SELECT * FROM jsonb_array_elements(p_items)
+  -- Pass 3: Deduct stock atomically per aggregated product
+  FOR agg_item IN
+    SELECT
+      it->>'id' AS product_id,
+      SUM(GREATEST(COALESCE((it->>'qty')::INTEGER, 0), 0)) AS aggregate_qty
+    FROM jsonb_array_elements(p_items) AS it
+    GROUP BY it->>'id'
   LOOP
-    v_product_id := item->>'id';
-    v_qty := (item->>'qty')::INTEGER;
-
     UPDATE public.products
-    SET stock_quantity = stock_quantity - v_qty,
-        in_stock = (stock_quantity - v_qty) > 0,
+    SET stock_quantity = stock_quantity - agg_item.aggregate_qty,
+        in_stock = (stock_quantity - agg_item.aggregate_qty) > 0,
         updated_at = NOW()
-    WHERE id = v_product_id;
+    WHERE id = agg_item.product_id;
   END LOOP;
 
   RETURN new_order;
@@ -989,41 +1031,11 @@ REVOKE EXECUTE ON FUNCTION public.log_client_error(TEXT, TEXT, TEXT) FROM PUBLIC
 GRANT EXECUTE ON FUNCTION public.log_client_error(TEXT, TEXT, TEXT) TO authenticated;
 
 -- ==============================================================================
--- 15B. DIRECT INVENTORY DEDUCTION (RPC)
--- Allows atomic stock reduction during checkout even when running in fallback
--- mode or without requiring direct table UPDATE permissions on public.products.
+-- 15B. RETIRED DIRECT INVENTORY RPC
+-- SECURITY FIX (A01): Direct stock mutation is retired. All inventory deductions
+-- must execute exclusively within public.place_order().
 -- ==============================================================================
-CREATE OR REPLACE FUNCTION public.deduct_product_stock(p_items JSONB)
-RETURNS VOID AS $$
-DECLARE
-  item JSONB;
-  v_product_id TEXT;
-  v_qty INTEGER;
-BEGIN
-  IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' THEN
-    RETURN;
-  END IF;
-
-  FOR item IN SELECT * FROM jsonb_array_elements(p_items)
-  LOOP
-    v_product_id := item->>'id';
-    v_qty := GREATEST(COALESCE((item->>'qty')::INTEGER, 1), 0);
-
-    IF v_product_id IS NOT NULL AND v_qty > 0 THEN
-      UPDATE public.products
-      SET stock_quantity = GREATEST(0, stock_quantity - v_qty),
-          in_stock = GREATEST(0, stock_quantity - v_qty) > 0,
-          updated_at = NOW()
-      WHERE id = v_product_id;
-    END IF;
-  END LOOP;
-END;
-$$ LANGUAGE plpgsql
-   SECURITY DEFINER
-   SET search_path = '';
-
-REVOKE EXECUTE ON FUNCTION public.deduct_product_stock(JSONB) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.deduct_product_stock(JSONB) TO anon, authenticated;
+DROP FUNCTION IF EXISTS public.deduct_product_stock(JSONB);
 
 -- ==============================================================================
 -- 16. AUTOMATIC INVENTORY RESTOCK ON ORDER CANCELLATION
@@ -1085,9 +1097,9 @@ DECLARE
   v_product_id TEXT;
   v_qty INTEGER;
 BEGIN
-  -- Only restock if the order was NOT already cancelled before deletion
-  -- (to avoid double-restocking).
-  IF OLD.status <> 'cancelled' AND jsonb_typeof(OLD.items) = 'array' THEN
+  -- Only restock if the order was active/unfulfilled ('pending' or 'processing').
+  -- Completed, delivered, or already-cancelled orders must NEVER be restocked upon deletion.
+  IF OLD.status IN ('pending', 'processing') AND jsonb_typeof(OLD.items) = 'array' THEN
     FOR item IN SELECT * FROM jsonb_array_elements(OLD.items)
     LOOP
       v_product_id := item->>'id';

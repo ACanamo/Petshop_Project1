@@ -5,9 +5,9 @@ export default function MetricsRibbon({ products, announcements, orders }) {
   const totalProducts = products.length;
   const feedsCount = products.filter(p => p.category === 'feeds').length;
   const accessoriesCount = products.filter(p => p.category === 'accessories').length;
-  const activeAnnouncementsCount = announcements.filter(a => a.isActive).length;
-  const totalOrders = orders.length;
-  const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const validOrders = orders.filter(o => o && o.status !== 'cancelled' && !o._offlineFallback);
+  const totalOrders = validOrders.length;
+  const totalRevenue = validOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
   const metrics = [
     { label: "Catalog Products", value: totalProducts, icon: "📦", tint: "#FFF7D6", border: "#FDE68A" },

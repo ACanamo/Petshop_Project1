@@ -28,7 +28,7 @@ export default function CartDrawer() {
 
   const { createOrder } = useOrders();
   const { user } = useAuth();
-  const { syncFromSupabase, deductProductStock } = useStore();
+  const { syncFromSupabase } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -104,14 +104,7 @@ export default function CartDrawer() {
         total: grandTotal
       });
 
-      // place_order() already deducts stock atomically in the same DB transaction that
-      // created the order, so only run the client-side deduction for the offline
-      // fallback path (order never reached Supabase) — otherwise stock gets decremented
-      // twice for every normal, successful checkout.
-      if (order?._offlineFallback && typeof deductProductStock === 'function') {
-        await deductProductStock(cart);
-      }
-
+      // Stock was deducted in the confirmed order's database transaction.
       // Refresh the cached product list from Supabase so the real post-checkout stock shows up
       syncFromSupabase();
 

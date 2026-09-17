@@ -49,7 +49,26 @@ export function CartProvider({ children }) {
           .select('*')
           .eq('user_id', user.id);
         if (!active || error || !Array.isArray(data)) return;
-        setCart(data.map(rowToItem));
+        const cloudItems = data.map(rowToItem);
+
+        // Seamlessly merge guest cart with cloud cart on login
+        setCart(prevCart => {
+          if (!prevCart || prevCart.length === 0) return cloudItems;
+          const mergedMap = new Map();
+          for (const item of cloudItems) {
+            mergedMap.set(item.id, { ...item });
+          }
+          for (const guestItem of prevCart) {
+            if (mergedMap.has(guestItem.id)) {
+              const existing = mergedMap.get(guestItem.id);
+              existing.qty = Math.max(existing.qty, guestItem.qty);
+            } else {
+              mergedMap.set(guestItem.id, { ...guestItem });
+              syncItemToCloud(guestItem);
+            }
+          }
+          return Array.from(mergedMap.values());
+        });
       } catch (err) {
         logError('CartContext.loadCart', err);
       }
@@ -101,7 +120,7 @@ export function CartProvider({ children }) {
   const syncItemToCloud = async (item) => {
     if (!isConfigured() || !user) return;
     try {
-      await supabase.from('cart_items').upsert({
+      const { error } = await supabase.from('cart_items').upsert({
         user_id: user.id,
         product_id: item.id,
         name: item.name,
@@ -111,6 +130,7 @@ export function CartProvider({ children }) {
         qty: item.qty,
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id,product_id' });
+      if (error) logError('CartContext.syncItemToCloud', error);
     } catch (err) {
       logError('CartContext.syncItemToCloud', err);
     }
@@ -119,7 +139,8 @@ export function CartProvider({ children }) {
   const removeItemFromCloud = async (productId) => {
     if (!isConfigured() || !user) return;
     try {
-      await supabase.from('cart_items').delete().eq('user_id', user.id).eq('product_id', productId);
+      const { error } = await supabase.from('cart_items').delete().eq('user_id', user.id).eq('product_id', productId);
+      if (error) logError('CartContext.removeItemFromCloud', error);
     } catch (err) {
       logError('CartContext.removeItemFromCloud', err);
     }

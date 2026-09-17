@@ -23,7 +23,11 @@ function normalizeProductImages(product) {
 export function StoreProvider({ children }) {
   const [products, setProducts] = useState(() => {
     const parsed = readJSON(STORAGE_KEY_PRODUCTS, null);
-    if (Array.isArray(parsed)) return parsed.map(normalizeProductImages);
+    if (Array.isArray(parsed)) {
+      const legacyIds = ["p13-balm", "p14-catnip", "p15-treats"];
+      const cleaned = parsed.filter(p => !legacyIds.includes(p.id));
+      if (cleaned.length > 0) return cleaned.map(normalizeProductImages);
+    }
     return DEFAULT_PRODUCTS.map(normalizeProductImages);
   });
 

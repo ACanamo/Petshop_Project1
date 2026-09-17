@@ -8,7 +8,7 @@ import MetricsRibbon from '../components/admin/MetricsRibbon';
 import ProductModal from '../components/admin/ProductModal';
 import AnnouncementModal from '../components/admin/AnnouncementModal';
 import { formatPeso, getOrderStatusMeta } from '../lib/constants';
-import { supabase, getSavedUrl, getSavedKey, saveCredentials, isConfigured } from '../lib/supabase';
+import { supabase, SUPABASE_URL, isConfigured, testConnection } from '../lib/supabase';
 import { TrashIcon } from '@phosphor-icons/react';
 
 // Shared soft "play" card treatment — mirrors the rounded, softly-shadowed
@@ -52,9 +52,8 @@ export default function AdminPage() {
   const [editingAnn, setEditingAnn] = useState(null);
 
   // Supabase settings state
-  const [sbUrl, setSbUrl] = useState(getSavedUrl());
-  const [sbKey, setSbKey] = useState(getSavedKey());
   const [syncStatusMsg, setSyncStatusMsg] = useState('');
+  const [testingConnection, setTestingConnection] = useState(false);
 
   // Product table search
   const [productSearch, setProductSearch] = useState('');
@@ -625,17 +624,17 @@ export default function AdminPage() {
               ☁️ Supabase Cloud Synchronization
             </h3>
             <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--play-muted)' }}>
-              Connect your Postgres database and cloud storage bucket.
+              Monitor your connection status and synchronize products and orders with your Postgres database.
             </p>
 
             {syncStatusMsg && (
               <div style={{
-                background: syncStatusMsg.includes('Success') ? '#D8F8F0' : '#FFE8EA',
-                color: syncStatusMsg.includes('Success') ? '#059669' : '#B82531',
+                background: syncStatusMsg.includes('Success') || syncStatusMsg.includes('successfully') ? '#D8F8F0' : '#FFE8EA',
+                color: syncStatusMsg.includes('Success') || syncStatusMsg.includes('successfully') ? '#059669' : '#B82531',
                 border: '1.5px solid',
-                borderColor: syncStatusMsg.includes('Success') ? '#A7F3D0' : '#FFC4CA',
+                borderColor: syncStatusMsg.includes('Success') || syncStatusMsg.includes('successfully') ? '#A7F3D0' : '#FFC4CA',
                 borderRadius: '14px',
-                padding: '10px 14px',
+                padding: '12px 16px',
                 fontSize: '13px',
                 fontWeight: 600,
                 marginBottom: '16px'
@@ -644,56 +643,68 @@ export default function AdminPage() {
               </div>
             )}
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                Supabase Project URL
-              </label>
-              <input
-                type="text"
-                className="form-input"
-                style={{ width: '100%', boxSizing: 'border-box' }}
-                value={sbUrl}
-                onChange={(e) => setSbUrl(e.target.value)}
-              />
-            </div>
+            <div style={{
+              background: '#F8F9FA',
+              border: '1.5px solid var(--play-border)',
+              borderRadius: '16px',
+              padding: '18px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--play-charcoal)' }}>
+                  Connection Status
+                </span>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 12px',
+                  borderRadius: '999px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  background: isConfigured() ? '#D8F8F0' : '#FFE8EA',
+                  color: isConfigured() ? '#059669' : '#B82531'
+                }}>
+                  <span style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: isConfigured() ? '#059669' : '#B82531'
+                  }} />
+                  {isConfigured() ? 'Cloud Active' : 'Offline / Unconfigured'}
+                </span>
+              </div>
 
-            <div style={{ marginBottom: '10px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                Supabase Anon Public API Key
-              </label>
-              <input
-                type="text"
-                className="form-input"
-                style={{ width: '100%', boxSizing: 'border-box' }}
-                value={sbKey}
-                onChange={(e) => setSbKey(e.target.value)}
-              />
-            </div>
+              <div style={{ fontSize: '12px', color: 'var(--play-muted)', marginBottom: '8px' }}>
+                <strong>Endpoint:</strong> <code style={{ background: '#fff', padding: '2px 6px', borderRadius: '4px' }}>{SUPABASE_URL || 'Not defined'}</code>
+              </div>
 
-            <p style={{ margin: '0 0 20px', fontSize: '12px', lineHeight: 1.5, color: 'var(--play-muted)' }}>
-              ⚠️ These are saved only in this browser's local storage, so anyone with access to this device can view or change them. Only paste your project's public <strong>anon / publishable</strong> key here — never a service-role or secret key.
-            </p>
+              <p style={{ margin: '8px 0 0', fontSize: '12px', lineHeight: 1.5, color: 'var(--play-muted)' }}>
+                🔒 <strong>Security Policy:</strong> Credentials are safely loaded from environment variables (<code>.env</code> file) and cannot be modified from the browser. To point to another Supabase project, update <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>.
+              </p>
+            </div>
 
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="btn btn-primary btn-pill"
-                onClick={() => {
-                  saveCredentials(sbUrl, sbKey);
-                  setSyncStatusMsg("Successfully updated credentials! Reloading to apply changes...");
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 600);
+                disabled={testingConnection}
+                onClick={async () => {
+                  setTestingConnection(true);
+                  setSyncStatusMsg("Pinging Supabase database...");
+                  const res = await testConnection();
+                  setSyncStatusMsg(res.message);
+                  setTestingConnection(false);
                 }}
               >
-                💾 Save & Apply Credentials
+                {testingConnection ? "Testing..." : "⚡ Test Database Connection"}
               </button>
 
               <button
                 type="button"
                 className="btn btn-outline btn-pill"
                 onClick={async () => {
-                  setSyncStatusMsg("Syncing from Supabase...");
+                  setSyncStatusMsg("Syncing catalog from Supabase cloud...");
                   await syncFromSupabase();
                   setSyncStatusMsg("Successfully synced catalog from Supabase cloud!");
                 }}

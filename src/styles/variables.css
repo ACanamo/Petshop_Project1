@@ -1,0 +1,94 @@
+/* ==========================================================================
+   PETCHUP — DISTINCTIVE EDITORIAL PET CARE DESIGN SYSTEM
+   Grounded in real pet care: natural nutrition, resilient hardware, joyful life.
+   ========================================================================== */
+
+:root {
+  /* Core 5-Color Base Palette (per SKILL.md) */
+  --color-ink: #171412;              /* Deep espresso ink — sharp, grounded typography */
+  --color-canvas: #FBF9F4;           /* Oat porcelain canvas — warm, breathable, clean */
+  --color-primary: #E8590C;          /* Sunburst amber — primary action, warmth */
+  --color-primary-hover: #CC4D0A;
+  --color-pine: #1B4D3E;             /* Pine evergreen — nutrition, organic wellness, trust */
+  --color-pine-hover: #143B30;
+  --color-biscuit: #F0E7D8;          /* Toasted biscuit — structural card base & framing */
+  --color-biscuit-light: #F7F2EA;
+  --color-crimson: #B91C1C;          /* Mulberry crimson — alerts, sale flags */
+
+  /* Structural & Utility Colors */
+  --color-bg: var(--color-canvas);
+  --color-card-bg: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-surface-tint: var(--color-biscuit-light);
+  --color-border: #E5DCD0;
+  --color-border-subtle: #EDE6DC;
+
+  /* Legacy & Accent Aliases for Component Compatibility */
+  --color-yellow: #D97706;           /* Warm amber gold */
+  --color-yellow-hover: #B45309;
+  --color-teal: var(--color-pine);
+  --color-teal-hover: var(--color-pine-hover);
+  --color-coral: var(--color-primary);
+  --color-coral-hover: var(--color-primary-hover);
+  --color-peach: var(--color-biscuit-light);
+  --color-soft-yellow: #F7EFCF;
+  --color-soft-teal: #E1EFEA;
+  --color-soft-coral: #F7E4E4;
+
+  /* Typography Colors */
+  --color-ink-soft: #4A433E;         /* High-contrast secondary copy */
+  --color-ink-muted: #7D736A;        /* Captions and metadata */
+
+  /* Typography */
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-dtc: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-play: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Playful Brand Tokens */
+  --play-orange: #FF6B35;
+  --play-orange-hover: #E85520;
+  --play-yellow: #FFD166;
+  --play-yellow-hover: #F4C244;
+  --play-teal: #06D6A0;
+  --play-teal-hover: #05B888;
+  --play-coral: #EF476F;
+  --play-coral-hover: #D8365D;
+  --play-purple: #7B2CBF;
+  --play-cream: #FFFDF9;
+  --play-card-bg: #FFFFFF;
+  --play-charcoal: #2D3142;
+  --play-muted: #6B7082;
+  --play-border: #F0ECE4;
+  --play-shadow: 0 10px 28px rgba(255, 107, 53, 0.08), 0 2px 8px rgba(45, 49, 66, 0.04);
+  --play-shadow-hover: 0 16px 36px rgba(255, 107, 53, 0.16), 0 4px 12px rgba(45, 49, 66, 0.06);
+
+  /* Minimalist DTC Brand Tokens */
+  --dtc-canvas: #FFFFFF;
+  --dtc-sand: #F8F7F4;
+  --dtc-stone: #EFECE6;
+  --dtc-border: #E3DFD7;
+  --dtc-border-light: #ECE8E1;
+  --dtc-ink: #141312;
+  --dtc-ink-soft: #44403C;
+  --dtc-ink-muted: #736E67;
+  --dtc-sage: #2C4A3E;
+  --dtc-sage-hover: #1E352C;
+  --dtc-sage-tint: #EEF3F0;
+
+  /* Radii Scale — disciplined hierarchy */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 9999px;
+
+  /* Elevation & Borders — physical contour definition */
+  --shadow-subtle: 0 1px 3px rgba(23, 20, 18, 0.04), 0 1px 2px rgba(23, 20, 18, 0.02);
+  --shadow-card: 0 2px 8px rgba(23, 20, 18, 0.04), 0 0 0 1px var(--color-border);
+  --shadow-hover: 0 10px 24px rgba(23, 20, 18, 0.08), 0 0 0 1px var(--color-ink);
+  --shadow-glow: 0 8px 20px rgba(232, 89, 12, 0.16);
+
+  --transition-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-bounce: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+

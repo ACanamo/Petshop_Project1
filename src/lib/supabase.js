@@ -1,53 +1,62 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Falls back to this project's own values so nothing breaks for existing
-// deployments, but a different environment (staging, a fork) can now point
-// at its own Supabase project via .env instead of editing this file — see
-// .env.example. These are the public anon key/URL, safe to ship in client
-// code either way (that's what RLS is for); this is a deployability
-// improvement, not a secrets fix.
-const DEFAULT_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://yezlwgljhiqzfghltfkw.supabase.co";
-const DEFAULT_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_jJPz6AjY8_s48wmyslkM0g_amgs9piY";
+// Standard environment configuration via Vite (.env file)
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://yezlwgljhiqzfghltfkw.supabase.co";
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_jJPz6AjY8_s48wmyslkM0g_amgs9piY";
 export const PRIMARY_ADMIN_EMAIL = "canamoaries13@gmail.com";
 
-const STORAGE_KEY_URL = "petchup_sb_url";
-const STORAGE_KEY_KEY = "petchup_sb_anon_key";
-
+// Compatibility getters
 export function getSavedUrl() {
-  try {
-    return localStorage.getItem(STORAGE_KEY_URL) || DEFAULT_SUPABASE_URL;
-  } catch (_) {
-    return DEFAULT_SUPABASE_URL;
-  }
+  return SUPABASE_URL;
 }
 
 export function getSavedKey() {
-  try {
-    return localStorage.getItem(STORAGE_KEY_KEY) || DEFAULT_SUPABASE_ANON_KEY;
-  } catch (_) {
-    return DEFAULT_SUPABASE_ANON_KEY;
-  }
-}
-
-export function saveCredentials(url, key) {
-  if (url) localStorage.setItem(STORAGE_KEY_URL, url.trim());
-  if (key) localStorage.setItem(STORAGE_KEY_KEY, key.trim());
-}
-
-export function resetCredentials() {
-  localStorage.removeItem(STORAGE_KEY_URL);
-  localStorage.removeItem(STORAGE_KEY_KEY);
+  return SUPABASE_ANON_KEY;
 }
 
 export function isConfigured() {
-  const url = getSavedUrl();
-  const key = getSavedKey();
-  return Boolean(url && key && url.includes(".supabase.co") && key.length > 20);
+  return Boolean(
+    SUPABASE_URL &&
+    SUPABASE_ANON_KEY &&
+    SUPABASE_URL.includes(".supabase.co") &&
+    SUPABASE_ANON_KEY.length > 20
+  );
 }
 
-export const supabase = createClient(getSavedUrl(), getSavedKey(), {
+// Single authoritative Supabase client instance
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true
   }
 });
+
+/**
+ * Health check utility to verify database connectivity from the admin panel
+ */
+export async function testConnection() {
+  if (!isConfigured()) {
+    return { ok: false, message: "Supabase credentials are not configured." };
+  }
+
+  const startTime = performance.now();
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id')
+      .limit(1);
+
+    const latency = Math.round(performance.now() - startTime);
+
+    if (error) {
+      return { ok: false, message: `Database query failed: ${error.message} (${latency}ms)` };
+    }
+
+    return {
+      ok: true,
+      message: `Connected successfully to Supabase! (Latency: ${latency}ms, sample count: ${data ? data.length : 0})`
+    };
+  } catch (err) {
+    return { ok: false, message: `Connection error: ${err.message || String(err)}` };
+  }
+}

@@ -407,10 +407,24 @@ export function StoreProvider({ children }) {
       return updatedCatalog;
     });
 
-    // 2. Also persist deduction directly to Supabase products table
+    // 2. Persist deduction to Supabase products table
     if (isConfigured()) {
-      for (const item of orderedItems) {
-        try {
+      try {
+        // Try atomic RPC procedure first (SECURITY DEFINER)
+        const payload = orderedItems.map(it => ({
+          id: it.id,
+          qty: parseInt(it.qty, 10) || 1
+        }));
+
+        const { error: rpcErr } = await supabase.rpc('deduct_product_stock', {
+          p_items: payload
+        });
+
+        // If RPC succeeds, done!
+        if (!rpcErr) return;
+
+        // If RPC is not created yet or fails, fallback to direct column updates
+        for (const item of orderedItems) {
           const deductQty = parseInt(item.qty, 10) || 1;
           const { data: dbProd } = await supabase
             .from('products')
@@ -429,9 +443,9 @@ export function StoreProvider({ children }) {
               })
               .eq('id', item.id);
           }
-        } catch (err) {
-          logError('StoreContext.deductProductStock_cloud', err);
         }
+      } catch (err) {
+        logError('StoreContext.deductProductStock_cloud', err);
       }
     }
   };

@@ -989,6 +989,43 @@ REVOKE EXECUTE ON FUNCTION public.log_client_error(TEXT, TEXT, TEXT) FROM PUBLIC
 GRANT EXECUTE ON FUNCTION public.log_client_error(TEXT, TEXT, TEXT) TO authenticated;
 
 -- ==============================================================================
+-- 15B. DIRECT INVENTORY DEDUCTION (RPC)
+-- Allows atomic stock reduction during checkout even when running in fallback
+-- mode or without requiring direct table UPDATE permissions on public.products.
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.deduct_product_stock(p_items JSONB)
+RETURNS VOID AS $$
+DECLARE
+  item JSONB;
+  v_product_id TEXT;
+  v_qty INTEGER;
+BEGIN
+  IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' THEN
+    RETURN;
+  END IF;
+
+  FOR item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    v_product_id := item->>'id';
+    v_qty := GREATEST(COALESCE((item->>'qty')::INTEGER, 1), 0);
+
+    IF v_product_id IS NOT NULL AND v_qty > 0 THEN
+      UPDATE public.products
+      SET stock_quantity = GREATEST(0, stock_quantity - v_qty),
+          in_stock = GREATEST(0, stock_quantity - v_qty) > 0,
+          updated_at = NOW()
+      WHERE id = v_product_id;
+    END IF;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql
+   SECURITY DEFINER
+   SET search_path = '';
+
+REVOKE EXECUTE ON FUNCTION public.deduct_product_stock(JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.deduct_product_stock(JSONB) TO anon, authenticated;
+
+-- ==============================================================================
 -- 16. AUTOMATIC INVENTORY RESTOCK ON ORDER CANCELLATION
 -- Fixes inventory leak: when an order transitions to 'cancelled', the items
 -- previously deducted by place_order() are automatically restored to stock.

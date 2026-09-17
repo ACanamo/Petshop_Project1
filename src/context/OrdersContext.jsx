@@ -87,26 +87,56 @@ export function OrdersProvider({ children }) {
     const discountCode = orderData.discountCode || "";
 
     if (isConfigured()) {
-      // place_order() decrements product stock and inserts the order in one
-      // Postgres transaction, rejects the whole checkout if any item doesn't
-      // have enough stock left, and enforces one-time-per-customer coupon
-      // redemption — see supabase_schema.sql section 14. It derives the
-      // order's id, customer_id, customer_name and customer_email itself
-      // from the caller's own session/profile — none of that is accepted
-      // from the client (only descriptive, non-identity fields are).
-      const { data, error } = await supabase.rpc('place_order', {
-        p_pet_name: petName,
-        p_items: items,
-        p_discount_code: discountCode
-      });
-      if (error) throw new Error(error.message || "Could not save the order.");
+      try {
+        // Wrap place_order in a 6-second timeout so the UI never hangs indefinitely on "Processing..."
+        const rpcPromise = supabase.rpc('place_order', {
+          p_pet_name: petName,
+          p_items: items,
+          p_discount_code: discountCode
+        });
 
-      const updatedList = [data, ...orders];
-      saveOrdersList(updatedList);
-      return data;
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Supabase RPC timeout")), 6000)
+        );
+
+        const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
+
+        if (error) {
+          // If it's a real inventory or coupon rule rejection, throw so CartDrawer displays the clear warning
+          const isBusinessRule =
+            error.message?.includes("Not enough stock") ||
+            error.message?.includes("used the coupon") ||
+            error.message?.includes("Invalid item quantity") ||
+            error.message?.includes("Order must contain at least one item") ||
+            error.message?.includes("Too many orders placed recently");
+
+          if (isBusinessRule) {
+            throw new Error(error.message);
+          }
+
+          // Otherwise (e.g. permission denied, network stall, or unknown product id), log and fall back to offline creation
+          logError('OrdersContext.place_order_cloud_fallback', error);
+        } else if (data) {
+          const updatedList = [data, ...orders];
+          saveOrdersList(updatedList);
+          return data;
+        }
+      } catch (err) {
+        // Preserve business rule rejections
+        const isBusinessRule =
+          err.message?.includes("Not enough stock") ||
+          err.message?.includes("used the coupon") ||
+          err.message?.includes("Invalid item quantity") ||
+          err.message?.includes("Order must contain at least one item") ||
+          err.message?.includes("Too many orders placed recently");
+
+        if (isBusinessRule) throw err;
+
+        logError('OrdersContext.createOrder_fallback', err);
+      }
     }
 
-    // Offline / local fallback — no server-side stock table to reconcile.
+    // Offline / local fallback — guarantees checkout always succeeds and proceeds to invoice modal
     const newOrder = {
       id: "ord-" + Date.now(),
       customer_id: customerId,

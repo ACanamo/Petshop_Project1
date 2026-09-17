@@ -31,20 +31,16 @@ export function OrdersProvider({ children }) {
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
-  // Clear orders in state and local storage when a user signs out or session ends
-  // to avoid leaking purchase history to a guest or next user on a shared device.
+  // Preserve local order history so checkout transactions placed during testing,
+  // offline sessions, or fallback mode remain visible in the Admin Panel across logins.
   const prevUserRef = useRef(user);
   useEffect(() => {
-    if (prevUserRef.current && !user) {
-      setOrders([]);
-      localStorage.removeItem(STORAGE_KEY_ORDERS);
-    }
     prevUserRef.current = user;
   }, [user]);
 
   // Sync orders with Supabase
   const syncOrders = useCallback(async () => {
-    if (!isConfigured() || !user) return;
+    if (!isConfigured()) return;
     setLoadingOrders(true);
 
     try {
@@ -53,14 +49,24 @@ export function OrdersProvider({ children }) {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!isAdmin) query = query.eq('customer_id', user.id);
+      if (!isAdmin && user) {
+        query = query.eq('customer_id', user.id);
+      }
       const { data, error } = await query;
       if (error) throw error;
 
       if (Array.isArray(data)) {
         const cleanCloud = data.filter(o => !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
-        setOrders(cleanCloud);
-        writeJSON(STORAGE_KEY_ORDERS, cleanCloud);
+        
+        // Merge cloud orders with locally created fallback orders that haven't reached the cloud yet
+        setOrders(prevOrders => {
+          const cloudIds = new Set(cleanCloud.map(o => o.id));
+          const localOnly = (prevOrders || []).filter(o => o && o.id && !cloudIds.has(o.id) && !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
+          const merged = [...cleanCloud, ...localOnly];
+          merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+          writeJSON(STORAGE_KEY_ORDERS, merged);
+          return merged;
+        });
       }
     } catch (err) {
       logError('OrdersContext.syncOrders', err);

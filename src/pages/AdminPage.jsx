@@ -37,11 +37,18 @@ export default function AdminPage() {
     syncFromSupabase
   } = useStore();
 
-  const { orders, updateOrderStatus, deleteOrder, clearAllOrders, openInvoice } = useOrders();
+  const { orders, updateOrderStatus, deleteOrder, clearAllOrders, openInvoice, syncOrders, loadingOrders } = useOrders();
   const { showToast } = useCart();
 
   // Active admin tab
   const [activeTab, setActiveTab] = useState('products'); // 'products' | 'announcements' | 'orders' | 'sync'
+
+  // Auto-sync orders whenever switching to the orders tab
+  useEffect(() => {
+    if (activeTab === 'orders' && typeof syncOrders === 'function') {
+      syncOrders();
+    }
+  }, [activeTab, syncOrders]);
 
   // Product modal state
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -488,28 +495,50 @@ export default function AdminPage() {
                 </p>
               </div>
 
-              {orders.length > 0 && (
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (confirm("Clear all recorded transactions? This cannot be undone.")) {
-                      runAdminAction(clearAllOrders());
-                    }
+                  onClick={async () => {
+                    await syncOrders();
+                    showToast("Synced customer orders from database! 🔄");
                   }}
+                  disabled={loadingOrders}
+                  className="btn btn-outline btn-pill"
                   style={{
-                    background: '#FFE8EA',
-                    border: '1.5px solid #FFC4CA',
-                    color: '#B82531',
-                    padding: '6px 14px',
-                    borderRadius: '999px',
-                    fontWeight: 700,
                     fontSize: '12px',
-                    cursor: 'pointer'
+                    padding: '6px 14px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: loadingOrders ? 'wait' : 'pointer'
                   }}
                 >
-                  ⚠️ Clear All Orders
+                  {loadingOrders ? "🔄 Syncing Orders..." : "🔄 Refresh Orders"}
                 </button>
-              )}
+
+                {orders.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm("Clear all recorded transactions? This cannot be undone.")) {
+                        runAdminAction(clearAllOrders());
+                      }
+                    }}
+                    style={{
+                      background: '#FFE8EA',
+                      border: '1.5px solid #FFC4CA',
+                      color: '#B82531',
+                      padding: '6px 14px',
+                      borderRadius: '999px',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ⚠️ Clear All Orders
+                  </button>
+                )}
+              </div>
             </div>
 
             {orders.length === 0 ? (
@@ -518,9 +547,18 @@ export default function AdminPage() {
                 <h4 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px', color: 'var(--play-charcoal)' }}>
                   No customer orders recorded yet!
                 </h4>
-                <p style={{ fontSize: '14px', color: 'var(--play-muted)', maxWidth: '420px', margin: '0 auto' }}>
+                <p style={{ fontSize: '14px', color: 'var(--play-muted)', maxWidth: '460px', margin: '0 auto 16px' }}>
                   The transaction registry is currently blank. When customers complete checkout on the shop, orders will appear here automatically.
                 </p>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-pill"
+                  onClick={() => syncOrders()}
+                  disabled={loadingOrders}
+                  style={{ fontSize: '13px', padding: '8px 20px' }}
+                >
+                  {loadingOrders ? "Checking Database..." : "🔄 Check Database for Orders"}
+                </button>
               </div>
             ) : (
               <div style={{ overflowX: 'auto', border: '1.5px solid var(--play-border)', borderRadius: '16px' }}>
@@ -538,13 +576,26 @@ export default function AdminPage() {
                   <tbody>
                     {orders.map(order => {
                       const statusMeta = getOrderStatusMeta(order.status);
+                      const isCloud = order.id && (order.id.length > 25 || !order.id.startsWith('ord-17'));
                       return (
                         <tr key={order.id} style={{ borderBottom: '1px solid var(--play-border)', fontSize: '14px' }}>
                           <td style={{ padding: '12px 14px' }}>
                             <strong style={{ color: 'var(--play-charcoal)', display: 'block' }}>#{order.id}</strong>
-                            <span style={{ fontSize: '12px', color: 'var(--play-muted)' }}>
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </span>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
+                              <span style={{ fontSize: '12px', color: 'var(--play-muted)' }}>
+                                {new Date(order.created_at).toLocaleDateString()}
+                              </span>
+                              <span style={{
+                                fontSize: '10px',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                background: isCloud ? '#D8F8F0' : '#FEF3C7',
+                                color: isCloud ? '#059669' : '#D97706'
+                              }}>
+                                {isCloud ? '☁️ Cloud' : '⚡ Local'}
+                              </span>
+                            </div>
                           </td>
                           <td style={{ padding: '12px 14px' }}>
                             <div style={{ fontWeight: 700, color: 'var(--play-charcoal)' }}>{order.customer_name || "Guest"}</div>

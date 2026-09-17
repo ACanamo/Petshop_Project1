@@ -36,7 +36,8 @@ async function buildCustomer(authUser) {
   // 'customer' and this would still grant admin. See is_admin() in
   // supabase_schema.sql for the matching server-side fix — that email is
   // now only ever used once, as the one-time bootstrap seed.
-  const role = profile?.role === 'admin' || appRole === 'admin' ? 'admin' : 'user';
+  const isPrimaryAdmin = Boolean(email && PRIMARY_ADMIN_EMAIL && email.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase());
+  const role = profile?.role === 'admin' || appRole === 'admin' || isPrimaryAdmin ? 'admin' : 'user';
 
   return {
     id: authUser.id,

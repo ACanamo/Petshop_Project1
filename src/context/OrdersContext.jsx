@@ -146,55 +146,53 @@ export function OrdersProvider({ children }) {
     const discountCode = orderData.discountCode || "";
 
     if (isConfigured()) {
+      // Wrap place_order in a 6-second timeout so the UI never hangs indefinitely on "Processing...".
+      // TIMED_OUT is a resolved sentinel (not a rejection) so Promise.race never leaves an
+      // unhandled rejection lying around if the real RPC promise settles after the timer fires.
+      const TIMED_OUT = Symbol('place_order_timeout');
+      let raced;
       try {
-        // Wrap place_order in a 6-second timeout so the UI never hangs indefinitely on "Processing..."
         const rpcPromise = supabase.rpc('place_order', {
           p_pet_name: petName,
           p_items: items,
           p_discount_code: discountCode
         });
 
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Supabase RPC timeout")), 6000)
-        );
+        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(TIMED_OUT), 6000));
 
-        const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
+        raced = await Promise.race([rpcPromise, timeoutPromise]);
+      } catch (err) {
+        // The request never reached Supabase at all (offline, DNS failure, CORS, etc.) —
+        // this is the one legitimate reason to fall back to a local-only order below.
+        logError('OrdersContext.createOrder_network_fallback', err);
+        raced = TIMED_OUT;
+      }
 
+      if (raced === TIMED_OUT) {
+        logError('OrdersContext.createOrder_timeout_fallback', new Error('place_order did not respond within 6s'));
+        // Falls through to the offline fallback below — we genuinely have no verdict from the database.
+      } else {
+        const { data, error } = raced;
         if (error) {
-          // If it's a real inventory or coupon rule rejection, throw so CartDrawer displays the clear warning
-          const isBusinessRule =
-            error.message?.includes("Not enough stock") ||
-            error.message?.includes("used the coupon") ||
-            error.message?.includes("Invalid item quantity") ||
-            error.message?.includes("Order must contain at least one item") ||
-            error.message?.includes("Too many orders placed recently");
-
-          if (isBusinessRule) {
-            throw new Error(error.message);
-          }
-
-          // Otherwise (e.g. permission denied, network stall, or unknown product id), log and fall back to offline creation
-          logError('OrdersContext.place_order_cloud_fallback', error);
-        } else if (data) {
+          // The database DID respond — every rejection it can raise (stock, coupon reuse,
+          // unknown/stale product id, rate limit, invalid quantity, expired session, or any
+          // other server-side error) must reach the customer as a real checkout failure.
+          // Silently swallowing this into a fake "successful" local-only order was the bug:
+          // the order would only ever exist in this one browser's localStorage and could
+          // never appear in the Admin Panel, which reads orders live from Supabase.
+          throw new Error(error.message);
+        }
+        if (data) {
           recordNewOrder(data);
           return data;
         }
-      } catch (err) {
-        // Preserve business rule rejections
-        const isBusinessRule =
-          err.message?.includes("Not enough stock") ||
-          err.message?.includes("used the coupon") ||
-          err.message?.includes("Invalid item quantity") ||
-          err.message?.includes("Order must contain at least one item") ||
-          err.message?.includes("Too many orders placed recently");
-
-        if (isBusinessRule) throw err;
-
-        logError('OrdersContext.createOrder_fallback', err);
       }
     }
 
-    // Offline / local fallback — guarantees checkout always succeeds and proceeds to invoice modal
+    // Offline / local fallback — only reached when Supabase isn't configured, or the request
+    // above genuinely never got a response (see TIMED_OUT / network-failure branches above).
+    // Flagged with _offlineFallback so callers (e.g. CartDrawer) know this order was never
+    // written to Supabase and skip any deduction logic already handled by place_order().
     const newOrder = {
       id: "ord-" + Date.now(),
       customer_id: customerId,
@@ -208,7 +206,8 @@ export function OrdersProvider({ children }) {
       discount_amount: parseFloat(Number(orderData.discountAmount || 0).toFixed(2)),
       total: parseFloat(Number(orderData.total || 0).toFixed(2)),
       status: "pending",
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      _offlineFallback: true
     };
 
     // Deduct stock in localStorage for offline consistency

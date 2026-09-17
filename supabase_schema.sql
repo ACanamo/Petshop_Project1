@@ -104,7 +104,9 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAUL
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'chk_products_stock_nonnegative'
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'chk_products_stock_nonnegative'
+      AND conrelid = 'public.products'::regclass
   ) THEN
     ALTER TABLE public.products ADD CONSTRAINT chk_products_stock_nonnegative CHECK (stock_quantity >= 0);
   END IF;
@@ -331,6 +333,10 @@ CREATE POLICY "announcements_delete_admin"
 -- which enforces atomic stock locking, stock deduction, rate-limiting, and
 -- single-use coupon redemption.
 DROP POLICY IF EXISTS "orders_insert_public" ON public.orders;
+
+-- Checkout inserts as the function owner. Clients must not create an order
+-- independently of its inventory transaction, even if a legacy INSERT policy remains.
+REVOKE INSERT ON public.orders FROM PUBLIC, anon, authenticated;
 
 -- OWASP A01 FIX: Removed `OR (SELECT auth.uid()) IS NULL`.
 -- That clause allowed anonymous sessions to read ALL orders in the table.
@@ -827,7 +833,8 @@ BEGIN
   END IF;
 
   -- Pass 1: Aggregate requested quantities per product ID and lock rows in deterministic order
-  -- Prevents overselling on duplicate line items and eliminates deadlock risk.
+  -- Prevents overselling on duplicate lines; consistent checkout lock ordering
+  -- avoids deadlocks between checkouts (other inventory writers must also cooperate).
   FOR agg_item IN
     SELECT
       it->>'id' AS product_id,
@@ -908,12 +915,20 @@ BEGIN
       SUM(GREATEST(COALESCE((it->>'qty')::INTEGER, 0), 0)) AS aggregate_qty
     FROM jsonb_array_elements(p_items) AS it
     GROUP BY it->>'id'
+    ORDER BY it->>'id' ASC
   LOOP
     UPDATE public.products
     SET stock_quantity = stock_quantity - agg_item.aggregate_qty,
         in_stock = (stock_quantity - agg_item.aggregate_qty) > 0,
         updated_at = NOW()
-    WHERE id = agg_item.product_id;
+    WHERE id = agg_item.product_id
+      AND stock_quantity >= agg_item.aggregate_qty;
+
+    -- Never return an order if a deduction did not update its product. Any
+    -- exception rolls back the order, coupon redemption, and ALL deductions.
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Stock deduction failed for product %', agg_item.product_id;
+    END IF;
   END LOOP;
 
   RETURN new_order;
@@ -1035,7 +1050,20 @@ GRANT EXECUTE ON FUNCTION public.log_client_error(TEXT, TEXT, TEXT) TO authentic
 -- SECURITY FIX (A01): Direct stock mutation is retired. All inventory deductions
 -- must execute exclusively within public.place_order().
 -- ==============================================================================
-DROP FUNCTION IF EXISTS public.deduct_product_stock(JSONB);
+-- Keep a denied SECURITY INVOKER stub so old clients receive a clear error,
+-- and accidental future execution grants cannot restore direct stock mutation.
+CREATE OR REPLACE FUNCTION public.deduct_product_stock(p_items JSONB)
+RETURNS VOID AS $$
+BEGIN
+  RAISE EXCEPTION 'Direct stock deduction is disabled; use place_order'
+    USING ERRCODE = '42501';
+END;
+$$ LANGUAGE plpgsql
+   SECURITY INVOKER
+   SET search_path = '';
+
+REVOKE EXECUTE ON FUNCTION public.deduct_product_stock(JSONB)
+  FROM PUBLIC, anon, authenticated;
 
 -- ==============================================================================
 -- 16. AUTOMATIC INVENTORY RESTOCK ON ORDER CANCELLATION

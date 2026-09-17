@@ -1,5 +1,7 @@
 **PETCHUP repair plan — 17 September 2026**
 
+**Historical plan:** Use [CRITICAL_ACTION_PLAN.md](CRITICAL_ACTION_PLAN.md) for the current implementation priorities based on [CTO_REAUDIT.md](CTO_REAUDIT.md). The plan below predates several source fixes and is retained for reference.
+
 This plan covers all 14 findings in CTO_AUDIT.md. It describes future implementation; no application fixes or live database changes have been made. Preserve the existing React/Supabase architecture and deliver small, verifiable changes.
 
 The deployed schema has not been inspected. First confirm whether A01 is live. If it is, contain it immediately; do not wait for the full improvement cycle. Use a short checkout maintenance window if necessary to deploy the inventory restriction and remove incompatible client fallback behavior together.

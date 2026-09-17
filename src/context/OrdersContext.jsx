@@ -153,6 +153,23 @@ export function OrdersProvider({ children }) {
       created_at: new Date().toISOString()
     };
 
+    // Deduct stock in localStorage for offline consistency
+    try {
+      const prods = readJSON("petchup_products", []);
+      let changed = false;
+      items.forEach(it => {
+        const pIdx = prods.findIndex(p => p.id === it.id);
+        if (pIdx !== -1) {
+          const deductQty = parseInt(it.qty, 10) || 1;
+          const newQty = Math.max(0, (prods[pIdx].stockQuantity ?? 10) - deductQty);
+          prods[pIdx].stockQuantity = newQty;
+          prods[pIdx].inStock = newQty > 0;
+          changed = true;
+        }
+      });
+      if (changed) writeJSON("petchup_products", prods);
+    } catch (_) {}
+
     const updatedList = [newOrder, ...orders];
     saveOrdersList(updatedList);
 

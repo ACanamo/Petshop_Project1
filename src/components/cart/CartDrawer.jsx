@@ -28,7 +28,7 @@ export default function CartDrawer() {
 
   const { createOrder } = useOrders();
   const { user } = useAuth();
-  const { syncFromSupabase } = useStore();
+  const { syncFromSupabase, deductProductStock } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -104,9 +104,12 @@ export default function CartDrawer() {
         total: grandTotal
       });
 
-      // Refresh the cached product list so the stock place_order() just
-      // decremented (see supabase_schema.sql) shows up immediately in the
-      // shop instead of only after a manual reload.
+      // Automatically deduct in-stock inventory immediately across the app and database
+      if (typeof deductProductStock === 'function') {
+        await deductProductStock(cart);
+      }
+
+      // Refresh the cached product list from Supabase
       syncFromSupabase();
 
       setTimeout(() => {

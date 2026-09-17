@@ -387,6 +387,55 @@ export function StoreProvider({ children }) {
     saveAnnouncementsList(list);
   };
 
+  const deductProductStock = async (orderedItems) => {
+    if (!Array.isArray(orderedItems) || orderedItems.length === 0) return;
+
+    // 1. Immediately update React state and localStorage
+    setProducts(prevProducts => {
+      const updatedCatalog = prevProducts.map(prod => {
+        const item = orderedItems.find(it => it.id === prod.id);
+        if (!item) return prod;
+        const deductQty = parseInt(item.qty, 10) || 1;
+        const newStock = Math.max(0, (prod.stockQuantity ?? 10) - deductQty);
+        return {
+          ...prod,
+          stockQuantity: newStock,
+          inStock: newStock > 0
+        };
+      });
+      writeJSON(STORAGE_KEY_PRODUCTS, updatedCatalog);
+      return updatedCatalog;
+    });
+
+    // 2. Also persist deduction directly to Supabase products table
+    if (isConfigured()) {
+      for (const item of orderedItems) {
+        try {
+          const deductQty = parseInt(item.qty, 10) || 1;
+          const { data: dbProd } = await supabase
+            .from('products')
+            .select('stock_quantity')
+            .eq('id', item.id)
+            .maybeSingle();
+
+          if (dbProd && typeof dbProd.stock_quantity === 'number') {
+            const newCloudStock = Math.max(0, dbProd.stock_quantity - deductQty);
+            await supabase
+              .from('products')
+              .update({
+                stock_quantity: newCloudStock,
+                in_stock: newCloudStock > 0,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', item.id);
+          }
+        } catch (err) {
+          logError('StoreContext.deductProductStock_cloud', err);
+        }
+      }
+    }
+  };
+
   const today = new Date().toISOString().slice(0, 10);
   const activeAnnouncement = announcements.find(a => (
     a.isActive && (!a.startDate || a.startDate <= today) && (!a.endDate || a.endDate >= today)
@@ -405,6 +454,7 @@ export function StoreProvider({ children }) {
       updateAnnouncement,
       toggleAnnouncementActive,
       deleteAnnouncement,
+      deductProductStock,
       syncFromSupabase,
       selectedProduct,
       openProductView,

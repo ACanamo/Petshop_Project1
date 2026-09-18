@@ -211,59 +211,127 @@ export function StoreProvider({ children }) {
     if (idx === -1) return null;
 
     const current = products[idx];
-    const updated = { ...current, ...updates };
+    // Descriptive updates cannot alter live inventory or in_stock state.
+    // Inventory adjustments must go through adjustProductStock.
+    const {
+      stockQuantity: _omitStockQty,
+      stock_quantity: _omitStock_quantity,
+      inStock: _omitInStock,
+      in_stock: _omitIn_stock,
+      ...descriptiveUpdates
+    } = updates;
 
-    if (Array.isArray(updates.images)) {
-      updated.images = updates.images.map(url => url.trim()).filter(Boolean);
+    const updated = {
+      ...current,
+      ...descriptiveUpdates,
+      // Preserve current live in-memory stock and inStock status
+      stockQuantity: current.stockQuantity,
+      inStock: current.inStock
+    };
+
+    if (Array.isArray(descriptiveUpdates.images)) {
+      updated.images = descriptiveUpdates.images.map(url => url.trim()).filter(Boolean);
       updated.imageUrl = updated.images[0] || "";
     }
 
-    if (updates.price !== undefined && parseFloat(updates.price) !== parseFloat(current.price)) {
+    if (descriptiveUpdates.price !== undefined && parseFloat(descriptiveUpdates.price) !== parseFloat(current.price)) {
       const history = Array.isArray(current.priceHistory) ? [...current.priceHistory] : [];
       history.push({
-        price: parseFloat(updates.price),
+        price: parseFloat(descriptiveUpdates.price),
         changed_at: new Date().toISOString(),
-        note: updates.priceNote || "Price updated by store admin"
+        note: descriptiveUpdates.priceNote || "Price updated by store admin"
       });
       updated.priceHistory = history;
     }
 
-    if (updates.stockQuantity !== undefined) {
-      const qty = parseInt(updates.stockQuantity, 10);
-      updated.stockQuantity = isNaN(qty) ? 0 : qty;
-      if (updated.stockQuantity <= 0) {
-        updated.inStock = false;
+    if (isConfigured()) {
+      const dbPayload = {
+        sku: updated.sku,
+        name: updated.name,
+        category: updated.category,
+        category_label: updated.categoryLabel,
+        pet: updated.pet,
+        price: updated.price,
+        original_price: updated.originalPrice,
+        image_url: updated.imageUrl,
+        images: updated.images,
+        unit: updated.unit,
+        rating: updated.rating,
+        rating_count: updated.ratingCount,
+        popularity: updated.popularity,
+        img: updated.img,
+        badge: updated.badge,
+        badge_class: updated.badgeClass,
+        tint_class: updated.tintClass,
+        desc: updated.desc,
+        price_history: updated.priceHistory,
+        updated_at: new Date().toISOString()
+      };
+
+      // Use UPDATE rather than UPSERT so a missing record fails clearly
+      // instead of silently recreating it, and stock_quantity is untouched.
+      const { data, error } = await supabase
+        .from('products')
+        .update(dbPayload)
+        .eq('id', id)
+        .select('id, stock_quantity, in_stock');
+
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error(`Product not found: cannot update non-existent product '${id}'.`);
+      }
+
+      // Sync latest live DB stock without overwriting it
+      if (data[0]) {
+        updated.stockQuantity = data[0].stock_quantity;
+        updated.inStock = data[0].in_stock;
       }
     }
 
-    if (isConfigured()) {
-      const { error } = await supabase.from('products').upsert({
-          id: updated.id,
-          sku: updated.sku,
-          name: updated.name,
-          category: updated.category,
-          category_label: updated.categoryLabel,
-          pet: updated.pet,
-          price: updated.price,
-          original_price: updated.originalPrice,
-          stock_quantity: updated.stockQuantity,
-          in_stock: updated.inStock,
-          image_url: updated.imageUrl,
-          images: updated.images,
-          unit: updated.unit,
-          rating: updated.rating,
-          rating_count: updated.ratingCount,
-          popularity: updated.popularity,
-          img: updated.img,
-          badge: updated.badge,
-          badge_class: updated.badgeClass,
-          tint_class: updated.tintClass,
-          desc: updated.desc,
-          price_history: updated.priceHistory,
-          updated_at: new Date().toISOString()
-        });
-      if (error) throw error;
+    const updatedList = [...products];
+    updatedList[idx] = updated;
+    saveProductsList(updatedList);
+
+    return updated;
+  };
+
+  const adjustProductStock = async (id, { delta = 0, newQuantity = null, reason = "Manual inventory adjustment" } = {}) => {
+    const idx = products.findIndex(p => p.id === id);
+    if (idx === -1) throw new Error(`Product ${id} not found.`);
+
+    const current = products[idx];
+    let targetQty;
+    if (typeof newQuantity === 'number') {
+      targetQty = Math.max(0, parseInt(newQuantity, 10));
+    } else {
+      targetQty = Math.max(0, (current.stockQuantity || 0) + parseInt(delta, 10));
     }
+
+    const targetInStock = targetQty > 0;
+
+    if (isConfigured()) {
+      const { data, error } = await supabase
+        .from('products')
+        .update({
+          stock_quantity: targetQty,
+          in_stock: targetInStock,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select('id, stock_quantity, in_stock');
+
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error(`Product not found: cannot adjust inventory for '${id}'.`);
+      }
+      targetQty = data[0].stock_quantity;
+    }
+
+    const updated = {
+      ...current,
+      stockQuantity: targetQty,
+      inStock: targetQty > 0
+    };
 
     const updatedList = [...products];
     updatedList[idx] = updated;
@@ -400,6 +468,7 @@ export function StoreProvider({ children }) {
       loading,
       addProduct,
       updateProduct,
+      adjustProductStock,
       deleteProduct,
       addAnnouncement,
       updateAnnouncement,

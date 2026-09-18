@@ -7,6 +7,7 @@ import { useCart } from '../context/CartContext';
 import MetricsRibbon from '../components/admin/MetricsRibbon';
 import ProductModal from '../components/admin/ProductModal';
 import AnnouncementModal from '../components/admin/AnnouncementModal';
+import InventoryAdjustModal from '../components/admin/InventoryAdjustModal';
 import { formatPeso, getOrderStatusMeta } from '../lib/constants';
 import { supabase, SUPABASE_URL, isConfigured, testConnection } from '../lib/supabase';
 import { readJSON } from '../lib/storage';
@@ -54,6 +55,10 @@ export default function AdminPage() {
   // Product modal state
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+
+  // Inventory adjustment modal state
+  const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
+  const [adjustingProduct, setAdjustingProduct] = useState(null);
 
   // Announcement modal state
   const [isAnnModalOpen, setIsAnnModalOpen] = useState(false);
@@ -356,6 +361,18 @@ export default function AdminPage() {
                             }}
                           >
                             ✏️ Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-pill"
+                            style={{ fontSize: '12px', padding: '4px 10px', color: '#D97706', borderColor: '#FDE68A' }}
+                            onClick={() => {
+                              setAdjustingProduct(product);
+                              setIsAdjustModalOpen(true);
+                            }}
+                            title="Adjust inventory level"
+                          >
+                            📦 Stock
                           </button>
                           <button
                             type="button"
@@ -871,6 +888,15 @@ export default function AdminPage() {
         onClose={() => setIsAnnModalOpen(false)}
         onSave={handleSaveAnnouncement}
         initialAnn={editingAnn}
+      />
+
+      <InventoryAdjustModal
+        isOpen={isAdjustModalOpen}
+        onClose={() => {
+          setIsAdjustModalOpen(false);
+          setAdjustingProduct(null);
+        }}
+        product={adjustingProduct}
       />
 
     </main>

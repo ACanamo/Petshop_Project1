@@ -62,19 +62,26 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
 
     setIsSaving(true);
     try {
-      await onSave({
+      const payload = {
         name,
         sku,
         category,
         pet,
         price: parseFloat(price),
         originalPrice: parseFloat(originalPrice) || 0,
-        stockQuantity: parseInt(stockQuantity, 10) || 0,
         badge,
         img,
         images: images.map(url => url.trim()).filter(Boolean),
         desc
-      });
+      };
+
+      // Only brand new listings can specify initial stock here.
+      // Existing product inventory is adjusted intentionally via adjustProductStock.
+      if (!initialProduct) {
+        payload.stockQuantity = parseInt(stockQuantity, 10) || 0;
+      }
+
+      await onSave(payload);
       onClose();
     } catch (error) {
       showToast(error.message || 'The product could not be saved. Please try again.');
@@ -239,16 +246,39 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
 
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                Stock Qty
+                {initialProduct ? 'Inventory Status' : 'Initial Stock Qty'}
               </label>
-              <input
-                type="number"
-                min="0"
-                className="form-input"
-                style={{ width: '100%', boxSizing: 'border-box' }}
-                value={stockQuantity}
-                onChange={(e) => setStockQuantity(e.target.value)}
-              />
+              {initialProduct ? (
+                <div>
+                  <div style={{
+                    padding: '8px 12px',
+                    background: '#F4F4F5',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: stockQuantity > 0 ? '#15803D' : '#DC2626',
+                    border: '1px solid #E4E4E7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span>{stockQuantity > 0 ? '📦' : '⚠️'}</span>
+                    <span>{stockQuantity} in stock</span>
+                  </div>
+                  <span style={{ fontSize: '10.5px', color: '#71717A', display: 'block', marginTop: '3px' }}>
+                    Protected from edits
+                  </span>
+                </div>
+              ) : (
+                <input
+                  type="number"
+                  min="0"
+                  className="form-input"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                  value={stockQuantity}
+                  onChange={(e) => setStockQuantity(e.target.value)}
+                />
+              )}
             </div>
           </div>
 

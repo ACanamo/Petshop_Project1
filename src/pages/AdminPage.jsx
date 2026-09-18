@@ -9,6 +9,7 @@ import ProductModal from '../components/admin/ProductModal';
 import AnnouncementModal from '../components/admin/AnnouncementModal';
 import InventoryAdjustModal from '../components/admin/InventoryAdjustModal';
 import { formatPeso, getOrderStatusMeta } from '../lib/constants';
+import { getAllowedTransitions, isTerminalStatus } from '../lib/orderLifecycle';
 import { supabase, SUPABASE_URL, isConfigured, testConnection } from '../lib/supabase';
 import { readJSON } from '../lib/storage';
 import { TrashIcon } from '@phosphor-icons/react';
@@ -39,11 +40,23 @@ export default function AdminPage() {
     syncFromSupabase
   } = useStore();
 
-  const { orders, updateOrderStatus, deleteOrder, clearAllOrders, openInvoice, syncOrders, loadingOrders } = useOrders();
+  const {
+    orders,
+    updateOrderStatus,
+    archiveOrder,
+    unarchiveOrder,
+    archiveCompletedOrders,
+    deleteOrder,
+    clearAllOrders,
+    openInvoice,
+    syncOrders,
+    loadingOrders
+  } = useOrders();
   const { showToast } = useCart();
 
-  // Active admin tab
+  // Active admin tab & orders sub-filter
   const [activeTab, setActiveTab] = useState('products'); // 'products' | 'announcements' | 'orders' | 'sync'
+  const [orderViewFilter, setOrderViewFilter] = useState('active'); // 'active' | 'archived'
 
   // Auto-sync orders whenever switching to the orders tab
   useEffect(() => {
@@ -157,14 +170,18 @@ export default function AdminPage() {
   });
 
   const diskOrders = readJSON("petchup_orders", []) || [];
-  const displayOrders = (orders && orders.length > 0)
+  const rawOrders = (orders && orders.length > 0)
     ? orders
     : (Array.isArray(diskOrders) ? diskOrders : []).filter(o => o && o.id && !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
+
+  const activeOrders = rawOrders.filter(o => !o.is_archived);
+  const archivedOrders = rawOrders.filter(o => Boolean(o.is_archived));
+  const displayOrders = orderViewFilter === 'archived' ? archivedOrders : activeOrders;
 
   const TABS = [
     { key: 'products', label: `📦 Products Catalog (${products.length})` },
     { key: 'announcements', label: `📢 Announcements (${announcements.length})` },
-    { key: 'orders', label: `🛍️ Orders Manager (${displayOrders.length})` },
+    { key: 'orders', label: `🛍️ Orders Manager (${activeOrders.length})` },
     { key: 'sync', label: '☁️ Supabase Cloud' },
     { key: 'errors', label: `🐞 System Errors${errorLogs.length ? ` (${errorLogs.length})` : ''}` }
   ];
@@ -521,6 +538,44 @@ export default function AdminPage() {
               </div>
 
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* Active vs Archived Filter Pills */}
+                <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', padding: '3px', borderRadius: '999px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setOrderViewFilter('active')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '999px',
+                      border: 'none',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: orderViewFilter === 'active' ? '#FFFFFF' : 'transparent',
+                      color: orderViewFilter === 'active' ? 'var(--play-charcoal)' : '#64748B',
+                      boxShadow: orderViewFilter === 'active' ? '0 2px 5px rgba(0,0,0,0.06)' : 'none'
+                    }}
+                  >
+                    Active ({activeOrders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderViewFilter('archived')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '999px',
+                      border: 'none',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: orderViewFilter === 'archived' ? '#FFFFFF' : 'transparent',
+                      color: orderViewFilter === 'archived' ? 'var(--play-charcoal)' : '#64748B',
+                      boxShadow: orderViewFilter === 'archived' ? '0 2px 5px rgba(0,0,0,0.06)' : 'none'
+                    }}
+                  >
+                    📦 Archived ({archivedOrders.length})
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={async () => {
@@ -538,29 +593,31 @@ export default function AdminPage() {
                     cursor: loadingOrders ? 'wait' : 'pointer'
                   }}
                 >
-                  {loadingOrders ? "🔄 Syncing Orders..." : "🔄 Refresh Orders"}
+                  {loadingOrders ? "🔄 Syncing Orders..." : "🔄 Refresh"}
                 </button>
 
-                {displayOrders.length > 0 && (
+                {activeOrders.some(o => o.status === 'delivered' || o.status === 'cancelled') && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm("Clear all recorded transactions? This cannot be undone.")) {
-                        runAdminAction(clearAllOrders());
+                      if (confirm("Archive all delivered and cancelled orders? History and customer receipts will remain safely preserved.")) {
+                        runAdminAction(archiveCompletedOrders());
+                        showToast("Completed orders moved to archive. 📦");
                       }
                     }}
                     style={{
-                      background: '#FFE8EA',
-                      border: '1.5px solid #FFC4CA',
-                      color: '#B82531',
+                      background: '#F1F5F9',
+                      border: '1.5px solid #CBD5E1',
+                      color: '#475569',
                       padding: '6px 14px',
                       borderRadius: '999px',
                       fontWeight: 700,
                       fontSize: '12px',
                       cursor: 'pointer'
                     }}
+                    title="Move delivered and cancelled orders to archive"
                   >
-                    ⚠️ Clear All Orders
+                    📦 Archive Completed
                   </button>
                 )}
               </div>
@@ -638,29 +695,39 @@ export default function AdminPage() {
                             {formatPeso(order.total)}
                           </td>
                           <td style={{ padding: '12px 14px' }}>
-                            <select
-                              value={order.status || 'pending'}
-                              disabled={order.status === 'cancelled'}
-                              onChange={(e) => handleOrderStatusChange(order.id, e.target.value)}
-                              style={{
-                                padding: '5px 10px',
-                                borderRadius: '999px',
-                                border: '1.5px solid var(--play-border)',
-                                fontWeight: 700,
-                                fontSize: '12px',
-                                background: order.status === 'cancelled' ? '#F3F4F6' : '#FAFAFA',
-                                color: order.status === 'cancelled' ? '#9CA3AF' : 'inherit',
-                                cursor: order.status === 'cancelled' ? 'not-allowed' : 'pointer',
-                                fontFamily: 'var(--font-play)'
-                              }}
-                              title={order.status === 'cancelled' ? 'Cancelled orders cannot be reopened' : 'Change order status'}
-                            >
-                              <option value="pending">🕒 Pending</option>
-                              <option value="processing">📦 Processing</option>
-                              <option value="shipped">🚚 Shipped</option>
-                              <option value="delivered">🎉 Delivered</option>
-                              <option value="cancelled">❌ Cancelled</option>
-                            </select>
+                            {(() => {
+                              const allowed = getAllowedTransitions(order.status);
+                              const isTerminal = isTerminalStatus(order.status);
+                              return (
+                                <select
+                                  value={order.status || 'pending'}
+                                  disabled={isTerminal}
+                                  onChange={(e) => handleOrderStatusChange(order.id, e.target.value)}
+                                  style={{
+                                    padding: '5px 10px',
+                                    borderRadius: '999px',
+                                    border: '1.5px solid var(--play-border)',
+                                    fontWeight: 700,
+                                    fontSize: '12px',
+                                    background: isTerminal ? '#F3F4F6' : '#FAFAFA',
+                                    color: isTerminal ? '#6B7280' : 'inherit',
+                                    cursor: isTerminal ? 'not-allowed' : 'pointer',
+                                    fontFamily: 'var(--font-play)'
+                                  }}
+                                  title={isTerminal ? `${order.status} orders cannot be modified` : 'Change order status'}
+                                >
+                                  {allowed.map(st => (
+                                    <option key={st} value={st}>
+                                      {st === 'pending' && '🕒 Pending'}
+                                      {st === 'processing' && '📦 Processing'}
+                                      {st === 'shipped' && '🚚 Shipped'}
+                                      {st === 'delivered' && '🎉 Delivered'}
+                                      {st === 'cancelled' && '❌ Cancelled'}
+                                    </option>
+                                  ))}
+                                </select>
+                              );
+                            })()}
                           </td>
                           <td style={{ padding: '12px 14px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
@@ -672,15 +739,35 @@ export default function AdminPage() {
                               >
                                 📄 Receipt
                               </button>
-                              <button
-                                type="button"
-                                className="btn btn-outline btn-pill"
-                                style={{ fontSize: '12px', padding: '4px 10px', color: '#B82531', borderColor: '#FFC4CA' }}
-                                onClick={() => handleDeleteOrder(order.id)}
-                                aria-label={`Delete order #${order.id}`}
-                              >
-                                <TrashIcon size={15} weight="bold" aria-hidden="true" />
-                              </button>
+                              {order.is_archived ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline btn-pill"
+                                  style={{ fontSize: '12px', padding: '4px 10px', color: '#059669', borderColor: '#A7F3D0' }}
+                                  onClick={() => {
+                                    runAdminAction(unarchiveOrder(order.id));
+                                    showToast(`Order #${order.id} restored to active orders.`);
+                                  }}
+                                  title="Restore to active orders"
+                                >
+                                  ↩️ Restore
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline btn-pill"
+                                  style={{ fontSize: '12px', padding: '4px 10px', color: '#64748B', borderColor: '#CBD5E1' }}
+                                  onClick={() => {
+                                    if (confirm(`Archive order #${order.id}? Receipts and history will remain safely preserved.`)) {
+                                      runAdminAction(archiveOrder(order.id));
+                                      showToast(`Order #${order.id} archived.`);
+                                    }
+                                  }}
+                                  title="Archive order (preserves accounting and customer receipt)"
+                                >
+                                  📦 Archive
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { readJSON, writeJSON } from '../lib/storage';
 import { logError } from '../lib/errorLog';
 import { placeOrder } from '../lib/placeOrder';
+import { validateOrderTransition } from '../lib/orderLifecycle';
 
 const OrdersContext = createContext();
 
@@ -166,60 +167,37 @@ export function OrdersProvider({ children }) {
 
     const currentOrder = orders[idx];
 
-    // Client-side guard matching the database state machine
-    if (currentOrder.status === 'cancelled' && newStatus !== 'cancelled') {
-      throw new Error("Cancelled orders cannot be reopened because returned inventory may have already been allocated to other shoppers.");
-    }
+    // 1. Enforce strict state machine rules (delivered/cancelled are terminal; no illegal skips or backwards movement)
+    validateOrderTransition(currentOrder.status, newStatus);
+
+    const isCancelling = newStatus === 'cancelled' && currentOrder.status !== 'cancelled';
+    // 2. Idempotent restocking: only return inventory once
+    const shouldRestock = isCancelling && !currentOrder.restocked;
 
     const updated = {
       ...currentOrder,
       status: newStatus,
+      restocked: currentOrder.restocked || shouldRestock,
+      cancelled_at: isCancelling ? (currentOrder.cancelled_at || new Date().toISOString()) : currentOrder.cancelled_at,
       updated_at: new Date().toISOString()
     };
 
     if (isConfigured()) {
       const { error } = await supabase.from('orders').update({
-          status: newStatus,
-          updated_at: updated.updated_at
-        }).eq('id', orderId);
+        status: newStatus,
+        restocked: updated.restocked,
+        cancelled_at: updated.cancelled_at || null,
+        updated_at: updated.updated_at
+      }).eq('id', orderId);
       if (error) throw error;
-    } else {
-      // Offline fallback: restore inventory in localStorage if transitioning to cancelled
-      if (currentOrder.status !== 'cancelled' && newStatus === 'cancelled' && Array.isArray(currentOrder.items)) {
-        try {
-          const prods = readJSON("petchup_products", []);
-          let changed = false;
-          currentOrder.items.forEach(it => {
-            const pIdx = prods.findIndex(p => p.id === it.id);
-            if (pIdx !== -1) {
-              prods[pIdx].stockQuantity = (prods[pIdx].stockQuantity || 0) + (it.qty || 1);
-              prods[pIdx].inStock = true;
-              changed = true;
-            }
-          });
-          if (changed) writeJSON("petchup_products", prods);
-        } catch (_) {}
-      }
     }
 
-    const updatedList = [...orders];
-    updatedList[idx] = updated;
-    saveOrdersList(updatedList);
-
-    return updated;
-  };
-
-  const deleteOrder = async (orderId) => {
-    const target = orders.find(o => o.id === orderId);
-    if (isConfigured()) {
-      const { error } = await supabase.from('orders').delete().eq('id', orderId);
-      if (error) throw error;
-    } else if (target && target.status !== 'cancelled' && Array.isArray(target.items)) {
-      // Offline fallback: restore inventory if deleting an active uncancelled order
+    // Restock inventory safely once
+    if (shouldRestock && Array.isArray(currentOrder.items)) {
       try {
         const prods = readJSON("petchup_products", []);
         let changed = false;
-        target.items.forEach(it => {
+        currentOrder.items.forEach(it => {
           const pIdx = prods.findIndex(p => p.id === it.id);
           if (pIdx !== -1) {
             prods[pIdx].stockQuantity = (prods[pIdx].stockQuantity || 0) + (it.qty || 1);
@@ -231,19 +209,100 @@ export function OrdersProvider({ children }) {
       } catch (_) {}
     }
 
-    const updatedList = orders.filter(o => o.id !== orderId);
+    const updatedList = [...orders];
+    updatedList[idx] = updated;
+    saveOrdersList(updatedList);
+
+    return updated;
+  };
+
+  const archiveOrder = async (orderId) => {
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx === -1) return null;
+
+    const currentOrder = orders[idx];
+    const now = new Date().toISOString();
+    const updated = {
+      ...currentOrder,
+      is_archived: true,
+      archived_at: now,
+      updated_at: now
+    };
+
+    if (isConfigured()) {
+      const { error } = await supabase.from('orders').update({
+        is_archived: true,
+        archived_at: now,
+        updated_at: now
+      }).eq('id', orderId);
+      if (error) throw error;
+    }
+
+    const updatedList = [...orders];
+    updatedList[idx] = updated;
+    saveOrdersList(updatedList);
+    return updated;
+  };
+
+  const unarchiveOrder = async (orderId) => {
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx === -1) return null;
+
+    const currentOrder = orders[idx];
+    const now = new Date().toISOString();
+    const updated = {
+      ...currentOrder,
+      is_archived: false,
+      archived_at: null,
+      updated_at: now
+    };
+
+    if (isConfigured()) {
+      const { error } = await supabase.from('orders').update({
+        is_archived: false,
+        archived_at: null,
+        updated_at: now
+      }).eq('id', orderId);
+      if (error) throw error;
+    }
+
+    const updatedList = [...orders];
+    updatedList[idx] = updated;
+    saveOrdersList(updatedList);
+    return updated;
+  };
+
+  // Safe archival replacing destructive hard deletion.
+  // Preserves financial audit trails, invoice history, and customer receipts.
+  const deleteOrder = async (orderId) => {
+    return archiveOrder(orderId);
+  };
+
+  const archiveCompletedOrders = async () => {
+    const eligible = orders.filter(o => !o.is_archived && (o.status === 'delivered' || o.status === 'cancelled'));
+    if (eligible.length === 0) return;
+
+    const now = new Date().toISOString();
+    const eligibleIds = eligible.map(o => o.id);
+
+    if (isConfigured()) {
+      const { error } = await supabase.from('orders').update({
+        is_archived: true,
+        archived_at: now,
+        updated_at: now
+      }).in('id', eligibleIds);
+      if (error) throw error;
+    }
+
+    const updatedList = orders.map(o => (
+      eligibleIds.includes(o.id) ? { ...o, is_archived: true, archived_at: now } : o
+    ));
     saveOrdersList(updatedList);
   };
 
   const clearAllOrders = async () => {
-    if (isConfigured()) {
-      const orderIds = orders.map(order => order.id);
-      if (orderIds.length) {
-        const { error } = await supabase.from('orders').delete().in('id', orderIds);
-        if (error) throw error;
-      }
-    }
-    saveOrdersList([]);
+    // For safety, clearAllOrders now archives completed orders instead of wiping the table
+    return archiveCompletedOrders();
   };
 
   // Filter orders for active user
@@ -269,7 +328,10 @@ export function OrdersProvider({ children }) {
       selectedInvoiceOrder,
       createOrder,
       updateOrderStatus,
+      archiveOrder,
+      unarchiveOrder,
       deleteOrder,
+      archiveCompletedOrders,
       clearAllOrders,
       openOrderHistory,
       closeOrderHistory,

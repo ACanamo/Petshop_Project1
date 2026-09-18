@@ -1,9 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useCart } from '../../context/CartContext';
+import { supabase } from '../../lib/supabase';
+import {
+  validateImageFile,
+  formatFileSize,
+  getImageDimensions,
+  uploadProductImage,
+  MAX_FILE_SIZE_BYTES
+} from '../../lib/imageUpload';
 import { XIcon } from '@phosphor-icons/react';
 
 export default function ProductModal({ isOpen, onClose, onSave, initialProduct }) {
   const { showToast } = useCart();
+  const fileInputRef = useRef(null);
+
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [category, setCategory] = useState('feeds');
@@ -17,6 +27,14 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
   const [desc, setDesc] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [fieldError, setFieldError] = useState('');
+
+  // Image upload & verification states
+  const [uploadMode, setUploadMode] = useState('file'); // 'file' or 'url'
+  const [stagedFile, setStagedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [fileMeta, setFileMeta] = useState(null);
+  const [uploadError, setUploadError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     if (initialProduct) {
@@ -34,6 +52,22 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
         : (initialProduct.imageUrl ? [initialProduct.imageUrl] : ['']);
       setImages(initialImages);
       setDesc(initialProduct.desc || '');
+
+      // Load initial image into preview if available
+      const existingCover = initialImages[0] || initialProduct.imageUrl || '';
+      if (existingCover) {
+        setPreviewUrl(existingCover);
+        setFileMeta({
+          name: 'Current Product Photo',
+          size: 'Catalog Asset',
+          dimensions: 'Verified',
+          type: 'Active Image',
+          isExisting: true
+        });
+      } else {
+        setPreviewUrl('');
+        setFileMeta(null);
+      }
     } else {
       setName('');
       setSku('');
@@ -46,11 +80,75 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
       setImg('🐾');
       setImages(['']);
       setDesc('');
+      setPreviewUrl('');
+      setFileMeta(null);
     }
+    setStagedFile(null);
+    setUploadError('');
     setFieldError('');
   }, [initialProduct, isOpen]);
 
   if (!isOpen) return null;
+
+  const processSelectedFile = async (file) => {
+    if (!file) return;
+
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setUploadError(validation.error);
+      showToast(validation.error);
+      return;
+    }
+
+    setUploadError('');
+    const dims = await getImageDimensions(file);
+    const objectUrl = URL.createObjectURL(file);
+
+    setStagedFile(file);
+    setPreviewUrl(objectUrl);
+    setFileMeta({
+      name: file.name,
+      size: formatFileSize(file.size),
+      dimensions: dims.width && dims.height ? `${dims.width} × ${dims.height} px` : 'Valid Dimensions',
+      type: file.type.replace('image/', '').toUpperCase(),
+      isExisting: false
+    });
+  };
+
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) processSelectedFile(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processSelectedFile(file);
+  };
+
+  const handleRemovePhoto = () => {
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setStagedFile(null);
+    setPreviewUrl('');
+    setFileMeta(null);
+    setUploadError('');
+    setImages(['']);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -62,6 +160,18 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
 
     setIsSaving(true);
     try {
+      let finalImages = images.map(url => url.trim()).filter(Boolean);
+
+      // Upload newly staged local file to Supabase Storage if present
+      if (stagedFile) {
+        showToast("⏳ Uploading photo to Supabase Storage...");
+        const publicUrl = await uploadProductImage(stagedFile, supabase);
+        finalImages = [publicUrl, ...finalImages.filter(u => u !== previewUrl)];
+        showToast("✅ Image uploaded successfully!");
+      } else if (previewUrl && !previewUrl.startsWith('blob:') && !finalImages.includes(previewUrl)) {
+        finalImages = [previewUrl, ...finalImages];
+      }
+
       const payload = {
         name,
         sku,
@@ -71,7 +181,8 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
         originalPrice: parseFloat(originalPrice) || 0,
         badge,
         img,
-        images: images.map(url => url.trim()).filter(Boolean),
+        imageUrl: finalImages[0] || '',
+        images: finalImages,
         desc
       };
 
@@ -85,6 +196,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
       onClose();
     } catch (error) {
       showToast(error.message || 'The product could not be saved. Please try again.');
+      setUploadError(error.message);
     } finally {
       setIsSaving(false);
     }
@@ -109,7 +221,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
         border: '2px solid var(--play-border)',
         boxShadow: '0 24px 60px rgba(45, 49, 66, 0.18)',
         width: '100%',
-        maxWidth: '560px',
+        maxWidth: '580px',
         maxHeight: '90vh',
         display: 'flex',
         flexDirection: 'column',
@@ -154,6 +266,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
               {fieldError}
             </p>
           )}
+
           <div style={{ marginBottom: '14px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
               Product Name *
@@ -282,7 +395,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
             <div style={{ flex: 1.5 }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
                 Promo Badge (Optional)
@@ -311,53 +424,264 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
             </div>
           </div>
 
-          <div style={{ marginBottom: '14px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-              Product Images (Unsplash or direct links — first one is the cover photo)
-            </label>
-            {images.map((url, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          {/* Direct Image Upload & Live Verification Section */}
+          <div style={{
+            marginBottom: '18px',
+            background: '#FAF5FF',
+            borderRadius: '16px',
+            border: '1.5px solid #E9D5FF',
+            padding: '16px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 800, color: '#581C87', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>📸 Product Cover Photo</span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  background: '#F3E8FF',
+                  color: '#7E22CE',
+                  padding: '2px 8px',
+                  borderRadius: '12px'
+                }}>
+                  Max 5MB • JPG, PNG, WEBP
+                </span>
+              </label>
+
+              {/* Mode Toggle */}
+              <div style={{ display: 'flex', gap: '4px', background: '#EDE9FE', padding: '2px', borderRadius: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode('file')}
+                  style={{
+                    padding: '3px 10px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: uploadMode === 'file' ? '#fff' : 'transparent',
+                    color: uploadMode === 'file' ? '#6B21A8' : '#6B7280',
+                    cursor: 'pointer',
+                    boxShadow: uploadMode === 'file' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode('url')}
+                  style={{
+                    padding: '3px 10px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: uploadMode === 'url' ? '#fff' : 'transparent',
+                    color: uploadMode === 'url' ? '#6B21A8' : '#6B7280',
+                    cursor: 'pointer',
+                    boxShadow: uploadMode === 'url' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  Image URL
+                </button>
+              </div>
+            </div>
+
+            {uploadMode === 'file' ? (
+              <div>
+                {/* Hidden File Input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  id="product-file-input"
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={handleFileInputChange}
+                />
+
+                {/* Live Verification Preview Box */}
+                {previewUrl ? (
+                  <div style={{
+                    display: 'flex',
+                    gap: '14px',
+                    background: '#fff',
+                    borderRadius: '12px',
+                    border: '1.5px solid #D8B4FE',
+                    padding: '12px',
+                    alignItems: 'center',
+                    boxShadow: '0 2px 8px rgba(126, 34, 206, 0.08)'
+                  }}>
+                    {/* Thumbnail */}
+                    <div style={{
+                      width: '84px',
+                      height: '84px',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      background: '#F3F4F6',
+                      border: '1px solid #E5E7EB',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <img
+                        src={previewUrl}
+                        alt="Product preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+
+                    {/* Metadata & Verification Badge */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          background: '#DCFCE7',
+                          color: '#15803D',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          ✓ {fileMeta?.isExisting ? 'Active Catalog Image' : 'Verified & Ready'}
+                        </span>
+                        {fileMeta?.type && (
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            background: '#F1F5F9',
+                            color: '#475569',
+                            padding: '2px 6px',
+                            borderRadius: '6px'
+                          }}>
+                            {fileMeta.type}
+                          </span>
+                        )}
+                      </div>
+
+                      <strong style={{
+                        display: 'block',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        color: '#1E293B',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {fileMeta?.name || 'Selected Image'}
+                      </strong>
+
+                      <span style={{ fontSize: '11.5px', color: '#64748B', display: 'block', marginTop: '2px' }}>
+                        Size: {fileMeta?.size} • {fileMeta?.dimensions}
+                      </span>
+
+                      {/* Action buttons */}
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          style={{
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            color: '#6B21A8',
+                            background: '#F3E8FF',
+                            border: '1px solid #D8B4FE',
+                            borderRadius: '6px',
+                            padding: '3px 10px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🔄 Replace Photo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          style={{
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            color: '#DC2626',
+                            background: '#FEE2E2',
+                            border: '1px solid #FECACA',
+                            borderRadius: '6px',
+                            padding: '3px 10px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🗑️ Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Drop / Click-to-Upload Zone */
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    style={{
+                      border: `2px dashed ${isDragging ? '#7E22CE' : '#C084FC'}`,
+                      background: isDragging ? '#F3E8FF' : '#fff',
+                      borderRadius: '12px',
+                      padding: '22px 16px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.18s ease'
+                    }}
+                  >
+                    <div style={{ fontSize: '28px', marginBottom: '6px' }}>📁</div>
+                    <strong style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#581C87' }}>
+                      Click to choose or drag & drop your image
+                    </strong>
+                    <span style={{ fontSize: '11px', color: '#7E22CE', display: 'block', marginTop: '3px' }}>
+                      JPEG, JPG, PNG, WEBP • Max 5MB
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* URL fallback mode */
+              <div>
                 <input
                   type="url"
                   className="form-input"
                   style={{ width: '100%', boxSizing: 'border-box' }}
-                  placeholder={idx === 0 ? "https://images.unsplash.com/photo-... (cover photo)" : "https://images.unsplash.com/photo-..."}
-                  value={url}
+                  placeholder="https://images.unsplash.com/photo-... (paste link)"
+                  value={previewUrl}
                   onChange={(e) => {
-                    const next = [...images];
-                    next[idx] = e.target.value;
-                    setImages(next);
+                    const url = e.target.value;
+                    setPreviewUrl(url);
+                    setImages([url]);
+                    setFileMeta(url ? {
+                      name: 'External Image Link',
+                      size: 'Remote URL',
+                      dimensions: 'Online Asset',
+                      type: 'URL',
+                      isExisting: false
+                    } : null);
                   }}
                 />
-                {images.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setImages(images.filter((_, i) => i !== idx))}
-                    aria-label="Remove image"
-                    style={{
-                      flexShrink: 0,
-                      width: '38px',
-                      border: '1px solid var(--play-border)',
-                      borderRadius: '10px',
-                      background: '#fff',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                      color: '#ef4444'
-                    }}
-                  >
-                    <XIcon size={16} weight="bold" aria-hidden="true" />
-                  </button>
-                )}
               </div>
-            ))}
-            <button
-              type="button"
-              className="btn btn-outline btn-pill"
-              onClick={() => setImages([...images, ''])}
-              style={{ fontSize: '13px', padding: '6px 14px' }}
-            >
-              + Add Another Image
-            </button>
+            )}
+
+            {uploadError && (
+              <div style={{
+                marginTop: '8px',
+                padding: '8px 12px',
+                background: '#FEF2F2',
+                borderRadius: '8px',
+                border: '1px solid #FCA5A5',
+                color: '#DC2626',
+                fontSize: '12px',
+                fontWeight: 600
+              }}>
+                ⚠️ {uploadError}
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: '20px' }}>
@@ -388,7 +712,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
               className="btn btn-primary btn-pill"
               disabled={isSaving}
             >
-              {isSaving ? "Saving…" : initialProduct ? "Save Changes" : "Add to Catalog 🚀"}
+              {isSaving ? "Uploading & Saving…" : initialProduct ? "Save Changes" : "Add to Catalog 🚀"}
             </button>
           </div>
         </form>

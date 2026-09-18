@@ -5,7 +5,6 @@ import { StoreProvider } from './context/StoreContext';
 import { CartProvider } from './context/CartContext';
 import { OrdersProvider } from './context/OrdersContext';
 
-import TopBanner from './components/common/TopBanner';
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import Toast from './components/common/Toast';
@@ -52,16 +51,10 @@ function PageFallback() {
   return <div className="route-loading" role="status">Loading Petchup…</div>;
 }
 
-// The promo ribbon and full site footer both compete with the login card
+// The full site footer competes with the login card
 // for attention (and the footer's dark block makes the page look like it
 // ends mid-thought) on a page whose only job is getting someone signed in,
-// so both are hidden there — everywhere else they render as usual.
-function ConditionalTopBanner() {
-  const { pathname } = useLocation();
-  if (pathname === '/login') return null;
-  return <TopBanner />;
-}
-
+// so it is hidden there — everywhere else it renders as usual.
 function ConditionalFooter() {
   const { pathname } = useLocation();
   if (pathname === '/login') return null;
@@ -78,7 +71,6 @@ export default function App() {
               <div className="app-layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
                 <RouteEffects />
                 <SessionExpiryNotice />
-                <ConditionalTopBanner />
                 <Header />
 
                 <div style={{ flex: 1 }}>

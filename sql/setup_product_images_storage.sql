@@ -22,8 +22,8 @@ ON CONFLICT (id) DO UPDATE SET
   file_size_limit = 5242880,
   allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'];
 
--- 2. Ensure RLS is active on storage.objects
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- 2. Storage RLS Policies
+-- Note: RLS is already enabled by Supabase system on storage.objects.
 
 -- 3. Public Read: anyone can view product images
 DROP POLICY IF EXISTS "Public Read Product Images" ON storage.objects;

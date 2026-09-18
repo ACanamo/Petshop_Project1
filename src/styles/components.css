@@ -1947,63 +1947,208 @@
   color: #E85923;
 }
 
-/* Hero Media Stage */
+/* Hero Media Stage — Blended HD Composition */
 .hero-media-wrapper {
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100%;
 }
 
 .hero-image-stage {
   position: relative;
   width: 100%;
-  max-width: 580px;
+  max-width: 620px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-.hero-main-photo {
+/* Background Peach Circle behind dog */
+.stage-shape-peach {
+  position: absolute;
+  width: 78%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: #FBD4B6;
+  left: 6%;
+  top: 5%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Background Sunny Yellow Disc behind cat */
+.stage-shape-sun {
+  position: absolute;
+  width: 29%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: #FEF08A;
+  right: 6%;
+  top: 9%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Decorative Doodle Paw */
+.stage-doodle-paw {
+  position: absolute;
+  left: 0%;
+  top: 28%;
+  z-index: 2;
+  pointer-events: none;
+  transform: rotate(-16deg);
+}
+
+/* Decorative Doodle Hearts */
+.stage-doodle-hearts {
+  position: absolute;
+  top: 11%;
+  left: 54%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Handwritten Script "For dogs & cats" */
+.stage-script-tag {
+  position: absolute;
+  top: 6%;
+  right: 0%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  transform: rotate(3deg);
+}
+
+.stage-script-tag .script-label {
+  font-family: 'Caveat', cursive, sans-serif;
+  font-size: clamp(20px, 2.4vw, 25px);
+  font-weight: 700;
+  color: #2D3142;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.stage-script-tag .script-underline {
+  width: 105px;
+  height: 14px;
+  margin-top: -2px;
+}
+
+/* Grounding Contact Shadow */
+.stage-ground-shadow {
+  position: absolute;
+  bottom: 0;
+  left: 6%;
+  width: 88%;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(65, 35, 15, 0.12) 0%, rgba(65, 35, 15, 0.04) 50%, transparent 75%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* HD Pets Cutout */
+.hero-main-photo-cutout {
+  position: relative;
+  z-index: 3;
   width: 100%;
   height: auto;
   display: block;
   object-fit: contain;
+  filter: drop-shadow(0 12px 28px rgba(60, 30, 10, 0.06));
 }
 
-.daily-essentials-hotspot {
+/* Floating Daily Essentials Card */
+.daily-essentials-card-link {
   position: absolute;
   bottom: 2%;
-  left: 2%;
+  left: -10px;
   z-index: 10;
   text-decoration: none;
+}
+
+.daily-essentials-card {
+  background: #FFFFFF;
+  border-radius: 22px;
+  padding: 10px 10px 12px;
+  box-shadow: 0 16px 36px rgba(45, 25, 10, 0.12), 0 3px 10px rgba(45, 25, 10, 0.04);
+  border: 1px solid rgba(254, 215, 170, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 180px;
+}
+
+.daily-essentials-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 22px 44px rgba(45, 25, 10, 0.18), 0 6px 14px rgba(45, 25, 10, 0.06);
+}
+
+.essentials-img-wrap {
+  position: relative;
+  width: 100%;
+  background: #FDF7F0;
+  border-radius: 16px;
+  padding: 10px 8px 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.essentials-sparkles {
+  position: absolute;
+  top: 14px;
+  right: 6px;
+  pointer-events: none;
+}
+
+.essentials-photo {
+  width: 100%;
+  max-width: 130px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.06));
+}
+
+.essentials-btn-wrap {
+  margin-top: -12px;
+  z-index: 2;
 }
 
 .hotspot-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
+  background: #FFFFFF;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 8px 16px;
+  padding: 7px 16px;
   border-radius: 9999px;
   font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
   font-size: 13px;
   font-weight: 700;
   color: #1E2024;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
 }
 
-.hotspot-pill:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+.daily-essentials-card:hover .hotspot-pill {
   color: #E85923;
+  box-shadow: 0 6px 18px rgba(232, 89, 35, 0.22);
 }
 
 .hotspot-arrow {
   transition: transform 0.2s ease;
 }
 
-.hotspot-pill:hover .hotspot-arrow {
+.daily-essentials-card:hover .hotspot-arrow {
   transform: translateX(3px);
 }
 
@@ -2288,6 +2433,71 @@
 
   .needs-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hero-image-stage {
+    max-width: 460px;
+    margin: 0 auto;
+  }
+
+  .daily-essentials-card-link {
+    left: 6px;
+    bottom: -4px;
+  }
+
+  .daily-essentials-card {
+    max-width: 155px;
+    padding: 8px 8px 10px;
+  }
+
+  .essentials-photo {
+    max-width: 105px;
+  }
+
+  .hotspot-pill {
+    font-size: 12px;
+    padding: 5px 12px;
+  }
+
+  .stage-script-tag {
+    top: 4%;
+    right: 2%;
+  }
+
+  .stage-script-tag .script-label {
+    font-size: 19px;
+  }
+
+  .stage-script-tag .script-underline {
+    width: 85px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-image-stage {
+    max-width: 350px;
+  }
+
+  .daily-essentials-card {
+    max-width: 125px;
+    padding: 6px 6px 8px;
+  }
+
+  .essentials-photo {
+    max-width: 80px;
+  }
+
+  .hotspot-pill {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+
+  .stage-script-tag .script-label {
+    font-size: 17px;
+  }
+
+  .stage-script-tag .script-underline {
+    width: 75px;
   }
 }
 

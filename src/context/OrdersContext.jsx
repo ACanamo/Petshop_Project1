@@ -6,22 +6,17 @@ import { logError } from '../lib/errorLog';
 import { placeOrder } from '../lib/placeOrder';
 import { validateOrderTransition } from '../lib/orderLifecycle';
 
+import { getUserOrderStorageKey } from '../lib/sessionManager';
+
 const OrdersContext = createContext();
 
-const STORAGE_KEY_ORDERS = "petchup_orders";
-const MIGRATION_KEY_CLEAN_ORDERS = "petchup_orders_blank_init_v3";
-
 export function OrdersProvider({ children }) {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, sessionGeneration } = useAuth();
+  const storageKey = getUserOrderStorageKey(user?.id);
 
   const [orders, setOrders] = useState(() => {
     try {
-      if (!localStorage.getItem(MIGRATION_KEY_CLEAN_ORDERS)) {
-        localStorage.removeItem(STORAGE_KEY_ORDERS);
-        localStorage.setItem(MIGRATION_KEY_CLEAN_ORDERS, "true");
-        return [];
-      }
-      const parsed = readJSON(STORAGE_KEY_ORDERS, null);
+      const parsed = readJSON(storageKey, null);
       if (Array.isArray(parsed)) {
         return parsed.filter(o => o.id && !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
       }
@@ -33,21 +28,34 @@ export function OrdersProvider({ children }) {
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
-  // Clear sensitive order history on sign-out
+  // Clear sensitive order history and open modals on sign-out or account switch
   const prevUserRef = useRef(user);
   useEffect(() => {
-    if (prevUserRef.current && !user) {
+    if (prevUserRef.current?.id !== user?.id) {
       setOrders([]);
-      localStorage.removeItem(STORAGE_KEY_ORDERS);
+      setSelectedInvoiceOrder(null);
+      setIsOrderHistoryOpen(false);
     }
     prevUserRef.current = user;
   }, [user]);
 
+  // Listen for global session cleared event
+  useEffect(() => {
+    const handleSessionCleared = () => {
+      setOrders([]);
+      setSelectedInvoiceOrder(null);
+      setIsOrderHistoryOpen(false);
+    };
+
+    window.addEventListener('petchup_session_cleared', handleSessionCleared);
+    return () => window.removeEventListener('petchup_session_cleared', handleSessionCleared);
+  }, []);
+
   // Listen for storage events and internal order updates across tabs and components
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (!e.key || e.key === STORAGE_KEY_ORDERS || e.type === 'petchup_orders_updated') {
-        const disk = readJSON(STORAGE_KEY_ORDERS, []);
+      if (!e.key || e.key === storageKey || e.type === 'petchup_orders_updated') {
+        const disk = readJSON(storageKey, []);
         if (Array.isArray(disk)) {
           const clean = disk.filter(o => o && o.id && !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
           setOrders(clean);
@@ -62,7 +70,7 @@ export function OrdersProvider({ children }) {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('petchup_orders_updated', handleStorageChange);
     };
-  }, []);
+  }, [storageKey]);
 
   // Sync orders with Supabase for authenticated users or admins
   const syncOrders = useCallback(async () => {
@@ -71,6 +79,7 @@ export function OrdersProvider({ children }) {
       return;
     }
     setLoadingOrders(true);
+    const activeGen = sessionGeneration;
 
     try {
       let query = supabase
@@ -84,12 +93,15 @@ export function OrdersProvider({ children }) {
       const { data, error } = await query;
       if (error) throw error;
 
+      // Discard stale response if session changed or user signed out while query was in flight
+      if (activeGen !== sessionGeneration || !user) return;
+
       if (Array.isArray(data)) {
         const cleanCloud = data.filter(o => !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
         
-        // Merge cloud orders with locally stored disk orders so fallback/local transactions are NEVER wiped
+        // Merge cloud orders with locally stored disk orders for THIS user
         setOrders(prevOrders => {
-          const diskOrders = readJSON(STORAGE_KEY_ORDERS, []) || [];
+          const diskOrders = readJSON(storageKey, []) || [];
           const combined = [
             ...cleanCloud,
             ...(prevOrders || []),
@@ -106,16 +118,18 @@ export function OrdersProvider({ children }) {
           }
           const merged = Array.from(map.values());
           merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-          writeJSON(STORAGE_KEY_ORDERS, merged);
+          writeJSON(storageKey, merged);
           return merged;
         });
       }
     } catch (err) {
       logError('OrdersContext.syncOrders', err);
     } finally {
-      setLoadingOrders(false);
+      if (activeGen === sessionGeneration) {
+        setLoadingOrders(false);
+      }
     }
-  }, [isAdmin, user]);
+  }, [isAdmin, user, sessionGeneration, storageKey]);
 
   useEffect(() => {
     syncOrders();
@@ -123,13 +137,13 @@ export function OrdersProvider({ children }) {
 
   const saveOrdersList = (newList) => {
     setOrders(newList);
-    writeJSON(STORAGE_KEY_ORDERS, newList);
+    writeJSON(storageKey, newList);
     window.dispatchEvent(new CustomEvent('petchup_orders_updated', { detail: newList }));
   };
 
   const recordNewOrder = (order) => {
     setOrders(prevOrders => {
-      const diskOrders = readJSON(STORAGE_KEY_ORDERS, []) || [];
+      const diskOrders = readJSON(storageKey, []) || [];
       const combined = [order, ...(prevOrders || []), ...(Array.isArray(diskOrders) ? diskOrders : [])];
       const map = new Map();
       for (const it of combined) {
@@ -139,7 +153,7 @@ export function OrdersProvider({ children }) {
       }
       const list = Array.from(map.values());
       list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-      writeJSON(STORAGE_KEY_ORDERS, list);
+      writeJSON(storageKey, list);
       window.dispatchEvent(new CustomEvent('petchup_orders_updated', { detail: list }));
       return list;
     });

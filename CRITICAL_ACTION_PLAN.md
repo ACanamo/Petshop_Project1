@@ -99,7 +99,7 @@ Run controlled production checks, then monitor checkout failures/unknown outcome
 - [ ] Deployed inventory/RLS permissions are verified for each role.
 - [x] Product edits cannot reverse stock deductions.
 - [x] Cancellation, archival, and returns preserve stock and history.
-- [ ] Session expiry/account switching leaves no previous customer data.
+- [x] Session expiry/account switching leaves no previous customer data.
 - [x] Retries return one order; confirmed totals match accepted prices.
 - [ ] Selected fulfillment/payment process works end to end.
 - [ ] Build, helper tests, database tests, and critical browser journeys pass.

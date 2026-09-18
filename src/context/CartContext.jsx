@@ -78,19 +78,28 @@ export function CartProvider({ children }) {
   }, [user?.id]);
 
   // The cart shown on screen shouldn't leak to whoever uses this device
-  // next, so clear the local/guest view the moment a session ends —
-  // whether the user clicked "Sign Out" or Supabase expired it server-side.
-  // This only clears what's displayed; the row above is what's saved in
-  // `cart_items` under that account, so it's exactly what gets reloaded the
-  // next time they log back in.
+  // next, so clear the local/guest view the moment a session ends or switches.
   const prevUserRef = useRef(user);
   useEffect(() => {
-    if (prevUserRef.current && !user) {
+    if (prevUserRef.current?.id !== user?.id) {
       setCart([]);
       setActiveDiscount(null);
+      setIsCartOpen(false);
     }
     prevUserRef.current = user;
   }, [user]);
+
+  // Listen for global session cleared event
+  useEffect(() => {
+    const handleSessionCleared = () => {
+      setCart([]);
+      setActiveDiscount(null);
+      setIsCartOpen(false);
+    };
+
+    window.addEventListener('petchup_session_cleared', handleSessionCleared);
+    return () => window.removeEventListener('petchup_session_cleared', handleSessionCleared);
+  }, []);
 
   useEffect(() => {
     writeJSON(STORAGE_KEY_CART, cart);

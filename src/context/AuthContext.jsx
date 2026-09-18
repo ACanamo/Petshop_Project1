@@ -4,6 +4,8 @@ import { readJSON, writeJSON } from '../lib/storage';
 import { getPasswordStrength, MIN_PASSWORD_SCORE } from '../lib/passwordStrength';
 import { logError } from '../lib/errorLog';
 
+import { clearSensitiveCustomerStorage } from '../lib/sessionManager';
+
 const AuthContext = createContext();
 
 const STORAGE_KEY_CUSTOMER = "petchup_current_customer";
@@ -100,6 +102,7 @@ export function AuthProvider({ children }) {
   });
 
   const [loading, setLoading] = useState(false);
+  const [sessionGeneration, setSessionGeneration] = useState(1);
 
   // Distinguishes a sign-out the user clicked ("Sign Out" button, via
   // logout() below) from one Supabase itself triggered — e.g. its
@@ -109,13 +112,6 @@ export function AuthProvider({ children }) {
   const isManualSignOutRef = useRef(false);
   const [sessionExpiredAt, setSessionExpiredAt] = useState(null);
 
-  // Single source of truth: user.role, set above (real backend) or by
-  // register()'s local-fallback bootstrap below (no backend at all — that
-  // path is already documented as trivially spoofable via devtools, since
-  // there's no RLS to fall back on offline; it's a demo affordance, not a
-  // security boundary). Either way, isAdmin itself no longer special-cases
-  // any specific email — the real enforcement is private.is_admin() in
-  // supabase_schema.sql, which now checks the same single role column.
   const isAdmin = Boolean(user && user.role === 'admin');
 
   // Restore Supabase Session on mount
@@ -128,6 +124,7 @@ export function AuthProvider({ children }) {
       const customer = await buildCustomer(authUser);
       if (!active) return;
       setUser(customer);
+      setSessionGeneration(g => g + 1);
       writeJSON(STORAGE_KEY_CUSTOMER, customer);
     }
 
@@ -138,7 +135,7 @@ export function AuthProvider({ children }) {
           await setAuthenticatedUser(session.user);
         } else if (active) {
           setUser(null);
-          localStorage.removeItem(STORAGE_KEY_CUSTOMER);
+          clearSensitiveCustomerStorage();
         }
       } catch (err) {
         logError('AuthContext.checkSession', err);
@@ -156,7 +153,8 @@ export function AuthProvider({ children }) {
           setSessionExpiredAt(Date.now());
         }
         setUser(null);
-        localStorage.removeItem(STORAGE_KEY_CUSTOMER);
+        setSessionGeneration(g => g + 1);
+        clearSensitiveCustomerStorage();
       } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session?.user) {
         window.setTimeout(() => setAuthenticatedUser(session.user), 0);
       }
@@ -320,7 +318,8 @@ export function AuthProvider({ children }) {
       isManualSignOutRef.current = false;
     }
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY_CUSTOMER);
+    setSessionGeneration(g => g + 1);
+    clearSensitiveCustomerStorage();
   };
 
   // Sends a password-reset email. Always resolves success-shaped (when
@@ -383,7 +382,8 @@ export function AuthProvider({ children }) {
       resetPassword,
       updatePassword,
       resendConfirmation,
-      sessionExpiredAt
+      sessionExpiredAt,
+      sessionGeneration
     }}>
       {children}
     </AuthContext.Provider>

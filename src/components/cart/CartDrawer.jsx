@@ -61,6 +61,16 @@ export default function CartDrawer() {
     };
   }, [isCartOpen]);
 
+  // Reset confirmed order and close cart on session clear or logout
+  useEffect(() => {
+    const handleSessionCleared = () => {
+      setConfirmedOrder(null);
+      closeCart();
+    };
+    window.addEventListener('petchup_session_cleared', handleSessionCleared);
+    return () => window.removeEventListener('petchup_session_cleared', handleSessionCleared);
+  }, [closeCart]);
+
   const handleApplyPromo = (e) => {
     e.preventDefault();
     if (!promoCodeInput.trim()) return;

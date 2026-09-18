@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useStore } from '../../context/StoreContext';
 import { formatPeso, normalizeEmoji } from '../../lib/constants';
 import { logError } from '../../lib/errorLog';
+import { obtainAuthoritativeQuote } from '../../lib/checkoutQuote';
 import OrderSuccessModal from './OrderSuccessModal';
 
 export default function CartDrawer() {
@@ -17,6 +18,8 @@ export default function CartDrawer() {
     removeFromCart,
     updateQty,
     clearCart,
+    clearPurchasedItems,
+    updateCartItems,
     subtotal,
     discountAmount,
     grandTotal,
@@ -28,7 +31,7 @@ export default function CartDrawer() {
 
   const { createOrder } = useOrders();
   const { user } = useAuth();
-  const { syncFromSupabase } = useStore();
+  const { syncFromSupabase, products } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -82,44 +85,96 @@ export default function CartDrawer() {
       return;
     }
 
+    // 1. Authoritative quoting & price validation
+    const quote = obtainAuthoritativeQuote(
+      cart,
+      products,
+      activeDiscount?.code,
+      activeDiscount?.percent
+    );
+
+    if (!quote.isValid) {
+      showToast(`Items unavailable in requested quantity: ${quote.unavailableItems.join(', ')}`);
+      return;
+    }
+
+    // Price change acceptance: if catalog price moved, update cart and require explicit re-acceptance
+    if (quote.hasPriceChanges) {
+      updateCartItems(quote.items);
+      try {
+        sessionStorage.removeItem(`petchup_attempt_${user.id}`);
+      } catch (_) {}
+      showToast("Prices have updated in our catalog. Please review your updated total before completing checkout.");
+      return;
+    }
+
+    // 2. Client-persisted attempt key scoped to user & accepted quote
+    const quoteFingerprint = JSON.stringify({
+      items: quote.items.map(i => ({ id: i.id, qty: i.qty, price: i.price })),
+      discount: quote.discountCode || '',
+      total: quote.total
+    });
+
+    const storageKey = `petchup_attempt_${user.id}`;
+    let attemptRecord;
+    try {
+      attemptRecord = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+    } catch (_) {
+      attemptRecord = null;
+    }
+
+    let attemptKey;
+    if (attemptRecord && attemptRecord.fingerprint === quoteFingerprint && attemptRecord.key) {
+      attemptKey = attemptRecord.key;
+    } else {
+      attemptKey = 'att_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)) + '_' + Date.now();
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify({ key: attemptKey, fingerprint: quoteFingerprint }));
+      } catch (_) {}
+    }
+
     setIsSubmitting(true);
     showToast("🚀 Processing your checkout order...");
 
     try {
+      const purchasedItemIds = quote.items.map(it => it.id);
+
       const order = await createOrder({
         customerId: user?.id || null,
         customerName: user?.name || "Guest Pet Parent",
         customerEmail: user?.email || "",
         petName: user?.petName || "",
-        items: cart.map(it => ({
+        items: quote.items.map(it => ({
           id: it.id,
           name: it.name,
           price: it.price,
           qty: it.qty,
           img: it.img
         })),
-        subtotal: subtotal,
-        discountCode: activeDiscount?.code || "",
-        discountAmount: discountAmount,
-        total: grandTotal
+        subtotal: quote.subtotal,
+        discountCode: quote.discountCode,
+        discountAmount: quote.discountAmount,
+        total: quote.total,
+        attemptKey
       });
 
-      // Stock was deducted in the confirmed order's database transaction.
-      // Refresh the cached product list from Supabase so the real post-checkout stock shows up
+      // Refresh cached product list from Supabase
       syncFromSupabase();
+
+      // Confirmed success: clean up attempt key and remove purchased items
+      try {
+        sessionStorage.removeItem(storageKey);
+      } catch (_) {}
 
       setTimeout(() => {
         setIsSubmitting(false);
-        clearCart();
+        clearPurchasedItems(purchasedItemIds);
         closeCart();
         setConfirmedOrder(order);
       }, 500);
     } catch (err) {
       setIsSubmitting(false);
       showToast(err.message || "Could not complete checkout. Please try again.");
-      // Also logged server-side (not just the toast the customer sees) so
-      // an admin can spot patterns — e.g. one product's stock check failing
-      // repeatedly is a "restock this now" signal, not just a one-off.
       logError('CartDrawer.handleCheckout', err);
     }
   };

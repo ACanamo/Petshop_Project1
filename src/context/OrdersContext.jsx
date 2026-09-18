@@ -150,15 +150,60 @@ export function OrdersProvider({ children }) {
       throw new Error("Checkout is unavailable until the store is connected. Your cart has been kept.");
     }
 
+    const attemptKey = orderData.attemptKey || null;
+
+    // 1. Proactive check for already committed attempt before re-calling RPC if retrying
+    if (attemptKey && user?.id) {
+      try {
+        const { data: existing } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('customer_id', user.id)
+          .eq('checkout_attempt_key', attemptKey)
+          .maybeSingle();
+
+        if (existing?.id) {
+          recordNewOrder(existing);
+          return existing;
+        }
+      } catch (_) {}
+    }
+
     // Only a confirmed server order can be recorded or shown as successful.
     // Inventory is deducted by place_order, never by a separate browser write.
-    const order = await placeOrder(supabase, {
-      p_pet_name: orderData.petName || user?.petName || "",
-      p_items: orderData.items || [],
-      p_discount_code: orderData.discountCode || ""
-    });
-    recordNewOrder(order);
-    return order;
+    try {
+      const params = {
+        p_pet_name: orderData.petName || user?.petName || "",
+        p_items: orderData.items || [],
+        p_discount_code: orderData.discountCode || ""
+      };
+      if (attemptKey) {
+        params.p_attempt_key = attemptKey;
+      }
+
+      const order = await placeOrder(supabase, params);
+      recordNewOrder(order);
+      return order;
+    } catch (err) {
+      // Reconcile unknown / timed-out outcomes explicitly:
+      // Check if the order was actually committed before failing
+      if (attemptKey && user?.id) {
+        try {
+          const { data: committed } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('customer_id', user.id)
+            .eq('checkout_attempt_key', attemptKey)
+            .maybeSingle();
+
+          if (committed?.id) {
+            recordNewOrder(committed);
+            return committed;
+          }
+        } catch (_) {}
+      }
+      throw err;
+    }
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {

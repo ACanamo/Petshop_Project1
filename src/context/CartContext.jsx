@@ -239,6 +239,27 @@ export function CartProvider({ children }) {
     showToast("Coupon removed.");
   };
 
+  const updateCartItems = (newItems) => {
+    setCart(newItems);
+    if (isConfigured() && user && Array.isArray(newItems)) {
+      newItems.forEach(item => syncItemToCloud(item));
+    }
+  };
+
+  const clearPurchasedItems = (purchasedItemIds = []) => {
+    if (!purchasedItemIds || purchasedItemIds.length === 0) {
+      clearCart();
+      return;
+    }
+    const idSet = new Set(purchasedItemIds);
+    setCart(prev => prev.filter(it => !idSet.has(it.id)));
+    if (isConfigured() && user) {
+      for (const id of idSet) {
+        removeItemFromCloud(id);
+      }
+    }
+  };
+
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
   const toggleCart = () => setIsCartOpen(prev => !prev);
@@ -263,6 +284,8 @@ export function CartProvider({ children }) {
       removeFromCart,
       updateQty,
       clearCart,
+      clearPurchasedItems,
+      updateCartItems,
       applyDiscount,
       removeDiscount,
       openCart,

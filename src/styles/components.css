@@ -1798,7 +1798,12 @@
   background-color: #FFFDF9;
   position: relative;
   overflow: hidden;
-  padding: 48px 0 60px;
+  min-height: calc(100vh - 72px);
+  min-height: calc(100dvh - 72px);
+  display: flex;
+  align-items: center;
+  padding: 40px 0 60px;
+  box-sizing: border-box;
 }
 
 .hero-bg-paw {
@@ -1827,6 +1832,7 @@
 
 .hero-inner {
   max-width: 1240px;
+  width: 100%;
   margin: 0 auto;
   padding: 0 24px;
   display: grid;
@@ -2155,7 +2161,7 @@
 /* 4. What does your pet need? Section */
 .petchup-needs-section {
   background-color: #FFFDF9;
-  padding: 24px 0 64px;
+  padding: 60px 0 80px;
 }
 
 .needs-container {

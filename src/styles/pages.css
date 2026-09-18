@@ -7051,34 +7051,52 @@ body.playful-body .banner-link {
 
   .shop-products-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
   }
 
   .shop-products-grid .product-card {
-    padding: 10px;
-    border-radius: 16px;
+    padding: 12px 10px;
+    border-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    box-sizing: border-box;
+  }
+
+  .shop-products-grid .product-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
   }
 
   .shop-products-grid .product-img-wrap {
-    height: 120px;
+    height: 125px;
     margin-bottom: 10px;
-    border-radius: 12px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .shop-products-grid .product-badge {
-    top: 16px;
-    left: 16px;
-    padding: 4px 9px;
+    top: 14px;
+    left: 14px;
+    padding: 3px 8px;
     font-size: 0.62rem;
+    font-weight: 700;
   }
 
   .shop-products-grid .product-category {
-    font-size: 0.66rem;
+    font-size: 0.65rem;
+    margin-bottom: 3px;
   }
 
   .shop-products-grid .product-name {
-    font-size: 0.84rem;
-    margin-bottom: 4px;
+    font-size: 0.86rem;
+    line-height: 1.25;
+    margin-bottom: 6px;
+    min-height: 2.2em;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -7092,21 +7110,34 @@ body.playful-body .banner-link {
   }
 
   .shop-products-grid .product-pricing {
-    margin-bottom: 10px;
+    margin-top: auto;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
   }
 
   .shop-products-grid .product-price {
-    font-size: 1rem;
+    font-size: 1.05rem;
+    font-weight: 800;
   }
 
   .shop-products-grid .product-original-price {
-    font-size: 0.76rem;
+    font-size: 0.78rem;
   }
 
   .shop-products-grid .add-to-cart-btn {
-    font-size: 0.7rem;
-    padding: 8px 6px;
-    min-height: 36px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 8px 8px;
+    min-height: 38px;
+    border-radius: 9999px;
+    width: 100%;
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 

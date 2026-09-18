@@ -2470,6 +2470,30 @@
     right: 2%;
   }
 
+  .petchup-header {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .petchup-header-inner {
+    padding: 10px 16px;
+    gap: 10px;
+  }
+
+  .petchup-header-actions {
+    gap: 8px;
+  }
+
+  .petchup-cart-btn {
+    padding: 7px 14px;
+    gap: 6px;
+  }
+
+  .petchup-mobile-drawer.open {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+
   .stage-script-tag .script-label {
     font-size: 19px;
   }
@@ -2479,7 +2503,72 @@
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  .petchup-header-inner {
+    padding: 8px 14px;
+    gap: 8px;
+  }
+
+  .petchup-logo-wrap {
+    gap: 6px;
+  }
+
+  .petchup-logo-text {
+    font-size: 19px;
+  }
+
+  .petchup-paw-logo {
+    width: 22px;
+    height: 22px;
+  }
+
+  .petchup-header-actions {
+    gap: 8px;
+  }
+
+  /* Compact Cart Button on mobile (icon + counter badge) */
+  .petchup-cart-btn .cart-label {
+    display: none;
+  }
+
+  .petchup-cart-btn {
+    padding: 7px 11px;
+    min-width: 40px;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(232, 89, 35, 0.2);
+  }
+
+  /* Compact User Pill on mobile (avatar circle) */
+  .petchup-user-pill {
+    padding: 3px;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+    background: #F9FAFB;
+  }
+
+  .user-avatar-circle {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .user-pill-name {
+    display: none;
+  }
+
+  .user-pill-caret {
+    display: none;
+  }
+
+  .petchup-mobile-toggle {
+    width: 22px;
+    height: 16px;
+  }
+
   .hero-image-stage {
     max-width: 350px;
   }
@@ -2504,6 +2593,25 @@
 
   .stage-script-tag .script-underline {
     width: 75px;
+  }
+}
+
+@media (max-width: 375px) {
+  /* Extra-compact for narrow devices (iPhone SE, smaller Androids) */
+  .user-pill-name {
+    display: none;
+  }
+
+  .petchup-user-pill {
+    padding: 3px;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    justify-content: center;
+  }
+
+  .petchup-logo-text {
+    font-size: 17.5px;
   }
 }
 

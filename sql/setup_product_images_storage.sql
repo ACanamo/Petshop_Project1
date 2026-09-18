@@ -25,11 +25,21 @@ ON CONFLICT (id) DO UPDATE SET
 -- 2. Storage RLS Policies
 -- Note: RLS is already enabled by Supabase system on storage.objects.
 
--- 3. Public Read: anyone can view product images
+-- 3. Read Access:
+-- Public buckets automatically serve images via direct URL without RLS.
+-- Restrict table queries (listing all files) to authenticated admins only.
 DROP POLICY IF EXISTS "Public Read Product Images" ON storage.objects;
-CREATE POLICY "Public Read Product Images"
+DROP POLICY IF EXISTS "Admin Read Product Images" ON storage.objects;
+CREATE POLICY "Admin Read Product Images"
   ON storage.objects FOR SELECT
-  USING (bucket_id = 'product-images');
+  TO authenticated
+  USING (
+    bucket_id = 'product-images'
+    AND (EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = (SELECT auth.uid()) AND role = 'admin'
+    ))
+  );
 
 -- 4. Admin Upload: only authenticated admins can upload images to product-images
 DROP POLICY IF EXISTS "Admin Upload Product Images" ON storage.objects;

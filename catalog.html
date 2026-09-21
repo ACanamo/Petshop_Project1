@@ -20,8 +20,13 @@
   <link rel="stylesheet" href="/src/styles/base.css">
   <link rel="stylesheet" href="/catalog.css">
 
-  <!-- Anime.js v4 (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/bundles/anime.umd.min.js"></script>
+  <!-- Anime.js v4 (Local with CDN fallback) -->
+  <script src="/js/anime.umd.min.js"></script>
+  <script>
+    if (!window.anime) {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/bundles/anime.umd.min.js"><\/script>');
+    }
+  </script>
 </head>
 <body class="pantry-catalog-body">
 

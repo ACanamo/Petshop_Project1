@@ -71,7 +71,7 @@ export default function Header() {
 
   const navItems = [
     { key: 'home', to: '/', label: 'Home', isActive: location.pathname === '/' },
-    { key: 'shop', to: '/shop', label: 'Shop All', isActive: location.pathname === '/shop' && !location.search },
+    { key: 'shop', to: '/catalog.html', label: 'Shop All', isActive: location.pathname.includes('catalog'), isNative: true },
     { key: 'feeds', to: '/shop?cat=feeds', label: 'Feeds', isActive: location.search.includes('feeds') },
     { key: 'accessories', to: '/shop?cat=accessories', label: 'Accessories', isActive: location.search.includes('accessories') },
     { key: 'grooming', to: '/shop?cat=grooming', label: 'Grooming', isActive: location.search.includes('grooming') },
@@ -107,13 +107,23 @@ export default function Header() {
           <ul className="petchup-nav-list">
             {navItems.map(item => (
               <li key={item.key} className="petchup-nav-item">
-                <Link
-                  to={item.to}
-                  className={`petchup-nav-link ${item.isActive ? 'active' : ''}`}
-                >
-                  {item.label}
-                  {item.isActive && <span className="petchup-nav-indicator" />}
-                </Link>
+                {item.isNative ? (
+                  <a
+                    href={item.to}
+                    className={`petchup-nav-link ${item.isActive ? 'active' : ''}`}
+                  >
+                    {item.label}
+                    {item.isActive && <span className="petchup-nav-indicator" />}
+                  </a>
+                ) : (
+                  <Link
+                    to={item.to}
+                    className={`petchup-nav-link ${item.isActive ? 'active' : ''}`}
+                  >
+                    {item.label}
+                    {item.isActive && <span className="petchup-nav-indicator" />}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
@@ -258,9 +268,15 @@ export default function Header() {
         <ul className="mobile-drawer-links">
           {navItems.map(item => (
             <li key={item.key}>
-              <Link to={item.to} onClick={closeMobileNav} className={item.isActive ? 'active' : ''}>
-                {item.label}
-              </Link>
+              {item.isNative ? (
+                <a href={item.to} onClick={closeMobileNav} className={item.isActive ? 'active' : ''}>
+                  {item.label}
+                </a>
+              ) : (
+                <Link to={item.to} onClick={closeMobileNav} className={item.isActive ? 'active' : ''}>
+                  {item.label}
+                </Link>
+              )}
             </li>
           ))}
         </ul>

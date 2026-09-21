@@ -61,6 +61,13 @@ function ConditionalFooter() {
   return <Footer />;
 }
 
+function CatalogRedirect() {
+  useEffect(() => {
+    window.location.href = '/catalog.html';
+  }, []);
+  return <PageFallback />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -79,6 +86,8 @@ export default function App() {
                       <Routes>
                         <Route path="/" element={<HomePage />} />
                         <Route path="/shop" element={<ShopPage />} />
+                        <Route path="/catalog" element={<CatalogRedirect />} />
+                        <Route path="/catalog.html" element={<CatalogRedirect />} />
                         <Route path="/reset-password" element={<ResetPasswordPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />

@@ -33,6 +33,7 @@ export default function AdminPage() {
     addProduct,
     updateProduct,
     deleteProduct,
+    toggleProductFeatured,
     addAnnouncement,
     updateAnnouncement,
     toggleAnnouncementActive,
@@ -295,14 +296,30 @@ export default function AdminPage() {
               gap: '16px',
               marginBottom: '20px'
             }}>
-              <input
-                type="text"
-                className="form-input"
-                style={{ width: '100%', maxWidth: '320px', borderRadius: '999px' }}
-                placeholder="Search catalog products..."
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ width: '100%', maxWidth: '320px', borderRadius: '999px' }}
+                  placeholder="Search catalog products..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                />
+                <span style={{
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  padding: '6px 14px',
+                  borderRadius: '999px',
+                  background: '#FFF7D6',
+                  border: '1.5px solid #FDE68A',
+                  color: '#92400E',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  ⭐ <strong>{products.filter(p => p.isFeatured).length}</strong> Highlights Active
+                </span>
+              </div>
 
               <button
                 type="button"
@@ -325,6 +342,7 @@ export default function AdminPage() {
                     <th style={{ padding: '12px 14px' }}>Category</th>
                     <th style={{ padding: '12px 14px' }}>Price (PHP)</th>
                     <th style={{ padding: '12px 14px' }}>Stock</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center' }}>Main Highlight</th>
                     <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
@@ -365,6 +383,37 @@ export default function AdminPage() {
                         }}>
                           {product.inStock ? `${product.stockQuantity ?? 10} in stock` : "Out of stock"}
                         </span>
+                      </td>
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const res = await toggleProductFeatured(product.id);
+                              showToast(res.isFeatured ? `⭐ ${product.name} highlighted on main page!` : `Removed ${product.name} from highlights`);
+                            } catch (err) {
+                              showToast('Failed to update product highlight');
+                            }
+                          }}
+                          style={{
+                            background: product.isFeatured ? '#FFFBEB' : '#FAFAFA',
+                            border: `1.5px solid ${product.isFeatured ? '#FDE68A' : '#E4E4E7'}`,
+                            color: product.isFeatured ? '#B45309' : '#71717A',
+                            padding: '4px 12px',
+                            borderRadius: '999px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s ease',
+                            boxShadow: product.isFeatured ? '0 2px 6px rgba(245, 158, 11, 0.15)' : 'none'
+                          }}
+                          title={product.isFeatured ? "Click to remove from main page highlights" : "Click to highlight on main page"}
+                        >
+                          <span>{product.isFeatured ? '⭐ Highlighted' : '☆ Highlight'}</span>
+                        </button>
                       </td>
                       <td style={{ padding: '12px 14px', textAlign: 'right' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>

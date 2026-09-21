@@ -25,6 +25,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
   const [img, setImg] = useState('🐾');
   const [images, setImages] = useState(['']);
   const [desc, setDesc] = useState('');
+  const [isFeatured, setIsFeatured] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [fieldError, setFieldError] = useState('');
 
@@ -52,6 +53,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
         : (initialProduct.imageUrl ? [initialProduct.imageUrl] : ['']);
       setImages(initialImages);
       setDesc(initialProduct.desc || '');
+      setIsFeatured(Boolean(initialProduct.isFeatured));
 
       // Load initial image into preview if available
       const existingCover = initialImages[0] || initialProduct.imageUrl || '';
@@ -80,6 +82,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
       setImg('🐾');
       setImages(['']);
       setDesc('');
+      setIsFeatured(false);
       setPreviewUrl('');
       setFileMeta(null);
     }
@@ -183,7 +186,8 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
         img,
         imageUrl: finalImages[0] || '',
         images: finalImages,
-        desc
+        desc,
+        isFeatured
       };
 
       // Only brand new listings can specify initial stock here.
@@ -422,6 +426,42 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
                 onChange={(e) => setImg(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Main Page Highlight Option */}
+          <div
+            style={{
+              marginBottom: '16px',
+              background: isFeatured ? '#FFFBEB' : '#FAFAFA',
+              border: `1.5px solid ${isFeatured ? '#FDE68A' : 'var(--play-border)'}`,
+              borderRadius: '16px',
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onClick={() => setIsFeatured(prev => !prev)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '20px' }}>{isFeatured ? '⭐' : '☆'}</span>
+              <div>
+                <strong style={{ display: 'block', fontSize: '13px', color: isFeatured ? '#92400E' : 'var(--play-charcoal)' }}>
+                  Highlight on Main Page
+                </strong>
+                <span style={{ fontSize: '11px', color: '#71717A' }}>
+                  Show in the "Little things. Big tail wags." showcase section
+                </span>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={isFeatured}
+              onChange={(e) => setIsFeatured(e.target.checked)}
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: '18px', height: '18px', accentColor: 'var(--play-orange)', cursor: 'pointer' }}
+            />
           </div>
 
           {/* Direct Image Upload & Live Verification Section */}

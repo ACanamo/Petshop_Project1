@@ -22,7 +22,8 @@ export const DEFAULT_PRODUCTS = [
     tintClass: "bg-yellow-tint",
     desc: "Oven-baked whole feeds with ancient grains and omega-3s for energy and shiny coats.",
     stockQuantity: 45,
-    inStock: true
+    inStock: true,
+    isFeatured: true
   },
   {
     id: "p2",
@@ -44,7 +45,8 @@ export const DEFAULT_PRODUCTS = [
     tintClass: "bg-coral-tint",
     desc: "Slow-braised duck in 18-hour marrow bone broth. Zero gums or fillers.",
     stockQuantity: 30,
-    inStock: true
+    inStock: true,
+    isFeatured: true
   },
   {
     id: "p3-cat",
@@ -65,7 +67,8 @@ export const DEFAULT_PRODUCTS = [
     tintClass: "bg-teal-tint",
     desc: "Smooth, high-moisture salmon purée with taurine and kelp for finicky eaters.",
     stockQuantity: 28,
-    inStock: true
+    inStock: true,
+    isFeatured: true
   },
   {
     id: "p3",
@@ -86,7 +89,8 @@ export const DEFAULT_PRODUCTS = [
     tintClass: "bg-teal-tint",
     desc: "High-tensile climbing rope weave with padded handle and corrosion-proof hardware.",
     stockQuantity: 50,
-    inStock: true
+    inStock: true,
+    isFeatured: true
   },
   {
     id: "p4",

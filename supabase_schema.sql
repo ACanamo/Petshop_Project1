@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   badge_class TEXT DEFAULT '',
   tint_class TEXT DEFAULT 'bg-yellow-tint',
   "desc" TEXT DEFAULT 'Lovingly prepared for happy pets.',
+  is_featured BOOLEAN NOT NULL DEFAULT false,
   price_history JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -120,6 +121,10 @@ ALTER TABLE public.products ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAU
 UPDATE public.products
 SET images = jsonb_build_array(image_url)
 WHERE jsonb_array_length(images) = 0 AND image_url IS NOT NULL AND image_url <> '';
+
+-- Featured / Highlighted products on main page ("Little things. Big tail wags." section)
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_products_is_featured ON public.products (is_featured) WHERE is_featured = true;
 
 -- FIX 0001: Index the orders.customer_id FK — improves join/filter performance.
 CREATE INDEX IF NOT EXISTS ix_orders_customer_id ON public.orders (customer_id);

@@ -1,58 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
+import { useStore } from '../../context/StoreContext';
 import { formatPeso } from '../../lib/constants';
-
-const FEATURED_ITEMS = [
-  {
-    id: 'insp-prod-food',
-    name: 'Everyday Dog Food',
-    pet: 'dog',
-    category: 'feeds',
-    unit: '1 kg',
-    price: 349,
-    imageUrl: '/images/prod_dog_food.png',
-    img: '🥩',
-    inStock: true
-  },
-  {
-    id: 'insp-prod-rope',
-    name: 'Soft Rope Toy',
-    pet: 'dog',
-    category: 'accessories',
-    unit: 'One size',
-    price: 149,
-    imageUrl: '/images/prod_rope_toy.png',
-    img: '🪢',
-    inStock: true
-  },
-  {
-    id: 'insp-prod-shampoo',
-    name: 'Gentle Pet Shampoo',
-    pet: 'all',
-    category: 'grooming',
-    unit: '250 ml',
-    price: 229,
-    imageUrl: '/images/prod_shampoo.png',
-    img: '🧴',
-    inStock: true
-  },
-  {
-    id: 'insp-prod-bowl',
-    name: 'Ceramic Pet Bowl',
-    pet: 'all',
-    category: 'accessories',
-    unit: 'Medium',
-    price: 299,
-    imageUrl: '/images/prod_ceramic_bowl.png',
-    img: '🥣',
-    inStock: true
-  }
-];
 
 export default function FeaturedProducts() {
   const { addToCart } = useCart();
-  const [activeFilter, setActiveFilter] = useState('all');
+  const { products, openProductView } = useStore();
   const [favorites, setFavorites] = useState({});
   const [addedIds, setAddedIds] = useState({});
 
@@ -70,12 +24,11 @@ export default function FeaturedProducts() {
     }, 1200);
   };
 
-  const filteredItems = FEATURED_ITEMS.filter(item => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'dog') return item.pet === 'dog' || item.pet === 'all';
-    if (activeFilter === 'cat') return item.pet === 'cat' || item.pet === 'all';
-    return true;
-  });
+  // Admin-selected highlights (isFeatured = true); fallback to first 4 products if none selected yet
+  const highlightedProducts = Array.isArray(products) ? products.filter(p => p.isFeatured) : [];
+  const displayItems = highlightedProducts.length > 0
+    ? highlightedProducts
+    : (Array.isArray(products) ? products.slice(0, 4) : []);
 
   return (
     <section className="insp-featured-section" id="essentials" aria-labelledby="essentials-heading">
@@ -92,41 +45,10 @@ export default function FeaturedProducts() {
                 </svg>
               </span>
             </h2>
-            <p className="insp-section-sub">Discover everyday essentials.</p>
+            <p className="insp-section-sub">Discover everyday essentials picked for your pets.</p>
           </div>
 
           <div className="insp-featured-actions">
-            {/* Filter Tabs */}
-            <div className="insp-filter-pills" role="tablist" aria-label="Filter products by pet">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeFilter === 'all'}
-                className={`insp-pill ${activeFilter === 'all' ? 'is-active' : ''}`}
-                onClick={() => setActiveFilter('all')}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeFilter === 'dog'}
-                className={`insp-pill ${activeFilter === 'dog' ? 'is-active' : ''}`}
-                onClick={() => setActiveFilter('dog')}
-              >
-                For dogs
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeFilter === 'cat'}
-                className={`insp-pill ${activeFilter === 'cat' ? 'is-active' : ''}`}
-                onClick={() => setActiveFilter('cat')}
-              >
-                For cats
-              </button>
-            </div>
-
             {/* View all link */}
             <div className="insp-view-all-box">
               <span className="insp-sample-note">Sample products &amp; prices</span>
@@ -139,12 +61,19 @@ export default function FeaturedProducts() {
 
         {/* Product Cards Grid */}
         <div className="insp-products-grid">
-          {filteredItems.map(item => {
+          {displayItems.map(item => {
             const isFav = !!favorites[item.id];
             const isAdded = !!addedIds[item.id];
+            const coverImg = (Array.isArray(item.images) && item.images[0]) || item.imageUrl || '';
+            const unitLabel = item.unit || item.categoryLabel || item.category || '';
 
             return (
-              <article key={item.id} className="insp-product-card">
+              <article
+                key={item.id}
+                className="insp-product-card"
+                onClick={() => typeof openProductView === 'function' && openProductView(item)}
+                style={{ cursor: 'pointer' }}
+              >
                 {/* Favorite Heart Button */}
                 <button
                   type="button"
@@ -159,18 +88,24 @@ export default function FeaturedProducts() {
 
                 {/* Product Image Frame */}
                 <div className="insp-card-img-frame">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="insp-product-img"
-                    loading="lazy"
-                  />
+                  {coverImg ? (
+                    <img
+                      src={coverImg}
+                      alt={item.name}
+                      className="insp-product-img"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div style={{ fontSize: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                      {item.img || '🐾'}
+                    </div>
+                  )}
                 </div>
 
                 {/* Product Meta */}
                 <div className="insp-card-meta">
                   <h3 className="insp-product-name">{item.name}</h3>
-                  <span className="insp-product-unit">{item.unit}</span>
+                  {unitLabel && <span className="insp-product-unit">{unitLabel}</span>}
                   <div className="insp-product-price">{formatPeso(item.price)}</div>
                 </div>
 

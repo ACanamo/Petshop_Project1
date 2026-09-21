@@ -81,6 +81,7 @@ export function StoreProvider({ children }) {
           tintClass: row.tint_class || "bg-yellow-tint",
           desc: row.desc || "",
           inStock: Boolean(row.in_stock),
+          isFeatured: Boolean(row.is_featured),
           priceHistory: Array.isArray(row.price_history) ? row.price_history : []
         }));
         setProducts(mapped);
@@ -165,6 +166,7 @@ export function StoreProvider({ children }) {
       tintClass: productData.tintClass || "bg-yellow-tint",
       desc: productData.desc ? productData.desc.trim() : "Lovingly prepared for happy pets.",
       inStock: stockQty > 0 && productData.inStock !== false,
+      isFeatured: Boolean(productData.isFeatured),
       priceHistory: [{
         price: currentPrice,
         changed_at: new Date().toISOString(),
@@ -195,6 +197,7 @@ export function StoreProvider({ children }) {
           badge_class: newProduct.badgeClass,
           tint_class: newProduct.tintClass,
           desc: newProduct.desc,
+          is_featured: newProduct.isFeatured,
           price_history: newProduct.priceHistory
         });
       if (error) throw error;
@@ -264,6 +267,7 @@ export function StoreProvider({ children }) {
         badge_class: updated.badgeClass,
         tint_class: updated.tintClass,
         desc: updated.desc,
+        is_featured: updated.isFeatured !== undefined ? Boolean(updated.isFeatured) : Boolean(current.isFeatured),
         price_history: updated.priceHistory,
         updated_at: new Date().toISOString()
       };
@@ -348,6 +352,42 @@ export function StoreProvider({ children }) {
 
     const updatedList = products.filter(p => p.id !== id);
     saveProductsList(updatedList);
+  };
+
+  const toggleProductFeatured = async (id) => {
+    const idx = products.findIndex(p => p.id === id);
+    if (idx === -1) return null;
+
+    const current = products[idx];
+    const nextFeatured = !current.isFeatured;
+
+    const updated = { ...current, isFeatured: nextFeatured };
+    const updatedList = [...products];
+    updatedList[idx] = updated;
+    saveProductsList(updatedList);
+
+    if (isConfigured()) {
+      try {
+        const { error } = await supabase
+          .from('products')
+          .update({
+            is_featured: nextFeatured,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id);
+
+        if (error) {
+          logError('toggleProductFeatured', error);
+          saveProductsList(products);
+          throw error;
+        }
+      } catch (err) {
+        saveProductsList(products);
+        throw err;
+      }
+    }
+
+    return updated;
   };
 
   // Announcement Actions
@@ -470,6 +510,7 @@ export function StoreProvider({ children }) {
       updateProduct,
       adjustProductStock,
       deleteProduct,
+      toggleProductFeatured,
       addAnnouncement,
       updateAnnouncement,
       toggleAnnouncementActive,

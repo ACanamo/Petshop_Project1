@@ -2912,9 +2912,36 @@
   z-index: 2;
 }
 
-.insp-doodle-heart {
-  display: inline-block;
-  margin-bottom: 6px;
+.insp-doodle-heart,
+.insp-banner-heart-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 8px;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.insp-banner-heart-btn:hover {
+  transform: scale(1.22);
+}
+
+.insp-banner-heart-btn:active {
+  transform: scale(0.88);
+}
+
+.insp-banner-heart-btn.is-liked svg {
+  animation: heartPop 0.38s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.insp-banner-heart-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
 .insp-banner-title {
@@ -2981,17 +3008,27 @@
 }
 
 .insp-banner-visual {
-  max-width: 42%;
+  max-width: 48%;
   display: flex;
   justify-content: flex-end;
-  align-items: flex-end;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
 }
 
 .insp-banner-img {
-  max-height: 185px;
-  width: auto;
-  object-fit: contain;
-  border-radius: 14px;
+  width: 100%;
+  max-width: 260px;
+  max-height: 195px;
+  object-fit: cover;
+  border-radius: 20px;
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+
+.insp-banner-card:hover .insp-banner-img {
+  transform: scale(1.03) rotate(0.8deg);
+  box-shadow: 0 16px 32px -6px rgba(0, 0, 0, 0.12), 0 6px 12px -3px rgba(0, 0, 0, 0.06);
 }
 
 /* --------------------------------------------------------------------------

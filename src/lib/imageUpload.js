@@ -164,3 +164,31 @@ export async function uploadProductImage(file, supabaseClient) {
 
   return publicData.publicUrl;
 }
+
+/**
+ * Validates an array or FileList of image files for multi-upload
+ * @param {Array<File|Blob>|FileList} files
+ * @param {number} maxFiles
+ * @returns {{ valid: boolean, error?: string }}
+ */
+export function validateMultipleImageFiles(files, maxFiles = 3) {
+  const fileArray = Array.from(files || []);
+  if (fileArray.length === 0) {
+    return { valid: false, error: 'No files selected.' };
+  }
+  if (fileArray.length > maxFiles) {
+    return { valid: false, error: `You can upload at most ${maxFiles} images per product.` };
+  }
+
+  for (let i = 0; i < fileArray.length; i++) {
+    const res = validateImageFile(fileArray[i]);
+    if (!res.valid) {
+      return {
+        valid: false,
+        error: `File ${i + 1} (${fileArray[i].name || 'unnamed'}): ${res.error}`
+      };
+    }
+  }
+
+  return { valid: true };
+}

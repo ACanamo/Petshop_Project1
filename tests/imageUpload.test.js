@@ -2,6 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   validateImageFile,
+  validateMultipleImageFiles,
   formatFileSize,
   sanitizeFilename,
   MAX_FILE_SIZE_BYTES
@@ -74,5 +75,28 @@ describe('image upload & validation utility', () => {
 
     assert.equal(validateImageFile(noExt).valid, false);
     assert.match(validateImageFile(noExt).error, /valid image extension/);
+  });
+
+  test('validates up to 3 image files and rejects >3 or invalid items', () => {
+    const valid1 = { name: 'angle1.jpg', type: 'image/jpeg', size: 1024 * 500 };
+    const valid2 = { name: 'angle2.png', type: 'image/png', size: 1024 * 800 };
+    const valid3 = { name: 'angle3.webp', type: 'image/webp', size: 1024 * 300 };
+    const valid4 = { name: 'angle4.jpg', type: 'image/jpeg', size: 1024 * 400 };
+
+    // Valid 1 to 3 items
+    assert.equal(validateMultipleImageFiles([valid1]).valid, true);
+    assert.equal(validateMultipleImageFiles([valid1, valid2]).valid, true);
+    assert.equal(validateMultipleImageFiles([valid1, valid2, valid3]).valid, true);
+
+    // Rejects > 3
+    const overLimit = validateMultipleImageFiles([valid1, valid2, valid3, valid4]);
+    assert.equal(overLimit.valid, false);
+    assert.match(overLimit.error, /at most 3 images/);
+
+    // Rejects if any file within the 3 is invalid
+    const invalidItem = { name: 'bad.gif', type: 'image/gif', size: 1024 };
+    const withBad = validateMultipleImageFiles([valid1, invalidItem, valid3]);
+    assert.equal(withBad.valid, false);
+    assert.match(withBad.error, /File 2/);
   });
 });

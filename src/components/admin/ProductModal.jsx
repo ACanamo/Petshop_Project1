@@ -3,12 +3,19 @@ import { useCart } from '../../context/CartContext';
 import { supabase } from '../../lib/supabase';
 import {
   validateImageFile,
+  validateMultipleImageFiles,
   formatFileSize,
   getImageDimensions,
   uploadProductImage,
   MAX_FILE_SIZE_BYTES
 } from '../../lib/imageUpload';
 import { XIcon } from '@phosphor-icons/react';
+
+const SLOT_CONFIG = [
+  { key: 'cover', label: 'Cover Photo', badge: '⭐ Primary / Cover', desc: 'Main catalog card & cart' },
+  { key: 'angle2', label: 'Angle / Side', badge: '📸 Angle 2', desc: 'Side view / nutrition' },
+  { key: 'angle3', label: 'Detail / In-Use', badge: '🔍 Angle 3', desc: 'Packaging / close-up' }
+];
 
 export default function ProductModal({ isOpen, onClose, onSave, initialProduct }) {
   const { showToast } = useCart();
@@ -23,19 +30,21 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
   const [stockQuantity, setStockQuantity] = useState(25);
   const [badge, setBadge] = useState('');
   const [img, setImg] = useState('🐾');
-  const [images, setImages] = useState(['']);
   const [desc, setDesc] = useState('');
   const [isFeatured, setIsFeatured] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [fieldError, setFieldError] = useState('');
 
-  // Image upload & verification states
+  // 3-Photo Upload & Verification States
   const [uploadMode, setUploadMode] = useState('file'); // 'file' or 'url'
-  const [stagedFile, setStagedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [fileMeta, setFileMeta] = useState(null);
+  const [slots, setSlots] = useState([
+    { previewUrl: '', stagedFile: null, meta: null },
+    { previewUrl: '', stagedFile: null, meta: null },
+    { previewUrl: '', stagedFile: null, meta: null }
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState(0);
+  const [dragOverSlot, setDragOverSlot] = useState(null);
   const [uploadError, setUploadError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     if (initialProduct) {
@@ -48,28 +57,31 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
       setStockQuantity(initialProduct.stockQuantity ?? 25);
       setBadge(initialProduct.badge || '');
       setImg(initialProduct.img || '🐾');
-      const initialImages = Array.isArray(initialProduct.images) && initialProduct.images.length > 0
-        ? initialProduct.images
-        : (initialProduct.imageUrl ? [initialProduct.imageUrl] : ['']);
-      setImages(initialImages);
       setDesc(initialProduct.desc || '');
       setIsFeatured(Boolean(initialProduct.isFeatured));
 
-      // Load initial image into preview if available
-      const existingCover = initialImages[0] || initialProduct.imageUrl || '';
-      if (existingCover) {
-        setPreviewUrl(existingCover);
-        setFileMeta({
-          name: 'Current Product Photo',
-          size: 'Catalog Asset',
-          dimensions: 'Verified',
-          type: 'Active Image',
-          isExisting: true
-        });
-      } else {
-        setPreviewUrl('');
-        setFileMeta(null);
-      }
+      const rawImages = Array.isArray(initialProduct.images) && initialProduct.images.length > 0
+        ? initialProduct.images
+        : (initialProduct.imageUrl ? [initialProduct.imageUrl] : []);
+
+      const loadedSlots = [0, 1, 2].map(idx => {
+        const url = rawImages[idx] || '';
+        if (url) {
+          return {
+            previewUrl: url,
+            stagedFile: null,
+            meta: {
+              name: idx === 0 ? 'Cover Photo' : `Photo ${idx + 1}`,
+              size: 'Catalog Asset',
+              dimensions: 'Verified',
+              type: 'Active Image',
+              isExisting: true
+            }
+          };
+        }
+        return { previewUrl: '', stagedFile: null, meta: null };
+      });
+      setSlots(loadedSlots);
     } else {
       setName('');
       setSku('');
@@ -80,77 +92,120 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
       setStockQuantity(25);
       setBadge('');
       setImg('🐾');
-      setImages(['']);
       setDesc('');
       setIsFeatured(false);
-      setPreviewUrl('');
-      setFileMeta(null);
+      setSlots([
+        { previewUrl: '', stagedFile: null, meta: null },
+        { previewUrl: '', stagedFile: null, meta: null },
+        { previewUrl: '', stagedFile: null, meta: null }
+      ]);
     }
-    setStagedFile(null);
     setUploadError('');
     setFieldError('');
   }, [initialProduct, isOpen]);
 
+  // Clean up any staged blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      slots.forEach(s => {
+        if (s.previewUrl && s.previewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(s.previewUrl);
+        }
+      });
+    };
+  }, [slots]);
+
   if (!isOpen) return null;
 
-  const processSelectedFile = async (file) => {
-    if (!file) return;
-
-    const validation = validateImageFile(file);
-    if (!validation.valid) {
-      setUploadError(validation.error);
-      showToast(validation.error);
-      return;
+  const triggerFileInput = (slotIndex) => {
+    setActiveSlotIndex(slotIndex);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
     }
+  };
+
+  const processFilesForSlots = async (fileList, startingIndex = 0) => {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
 
     setUploadError('');
-    const dims = await getImageDimensions(file);
-    const objectUrl = URL.createObjectURL(file);
 
-    setStagedFile(file);
-    setPreviewUrl(objectUrl);
-    setFileMeta({
-      name: file.name,
-      size: formatFileSize(file.size),
-      dimensions: dims.width && dims.height ? `${dims.width} × ${dims.height} px` : 'Valid Dimensions',
-      type: file.type.replace('image/', '').toUpperCase(),
-      isExisting: false
-    });
+    // Validate each file
+    for (let i = 0; i < files.length; i++) {
+      const validation = validateImageFile(files[i]);
+      if (!validation.valid) {
+        const errMsg = files.length > 1 ? `File ${i + 1} (${files[i].name}): ${validation.error}` : validation.error;
+        setUploadError(errMsg);
+        showToast(errMsg);
+        return;
+      }
+    }
+
+    const updatedSlots = [...slots];
+    let targetIndex = startingIndex;
+
+    for (let i = 0; i < files.length; i++) {
+      if (targetIndex >= 3) break;
+
+      const file = files[i];
+      const oldUrl = updatedSlots[targetIndex]?.previewUrl;
+      if (oldUrl && oldUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(oldUrl);
+      }
+
+      const dims = await getImageDimensions(file);
+      const objectUrl = URL.createObjectURL(file);
+
+      updatedSlots[targetIndex] = {
+        previewUrl: objectUrl,
+        stagedFile: file,
+        meta: {
+          name: file.name,
+          size: formatFileSize(file.size),
+          dimensions: dims.width && dims.height ? `${dims.width} × ${dims.height} px` : 'Valid Dimensions',
+          type: (file.type || '').replace('image/', '').toUpperCase() || 'IMAGE',
+          isExisting: false
+        }
+      };
+
+      targetIndex++;
+    }
+
+    setSlots(updatedSlots);
   };
 
   const handleFileInputChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) processSelectedFile(file);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processSelectedFile(file);
-  };
-
-  const handleRemovePhoto = () => {
-    if (previewUrl && previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl);
+    if (e.target.files && e.target.files.length > 0) {
+      processFilesForSlots(e.target.files, activeSlotIndex);
     }
-    setStagedFile(null);
-    setPreviewUrl('');
-    setFileMeta(null);
-    setUploadError('');
-    setImages(['']);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  };
+
+  const handleRemoveSlot = (index) => {
+    const slot = slots[index];
+    if (slot?.previewUrl && slot.previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(slot.previewUrl);
     }
+    const updatedSlots = [...slots];
+    updatedSlots[index] = { previewUrl: '', stagedFile: null, meta: null };
+    setSlots(updatedSlots);
+  };
+
+  const handleUrlChange = (index, val) => {
+    const url = val.trim();
+    const updatedSlots = [...slots];
+    updatedSlots[index] = {
+      previewUrl: url,
+      stagedFile: null,
+      meta: url ? {
+        name: index === 0 ? 'Cover URL' : `Photo ${index + 1} URL`,
+        size: 'Remote URL',
+        dimensions: 'Online Asset',
+        type: 'URL',
+        isExisting: true
+      } : null
+    };
+    setSlots(updatedSlots);
   };
 
   const handleSubmit = async (e) => {
@@ -163,17 +218,23 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
 
     setIsSaving(true);
     try {
-      let finalImages = images.map(url => url.trim()).filter(Boolean);
+      // Find all slots with newly staged files that need to be uploaded to Supabase Storage
+      const stagedSlots = slots.map((s, idx) => ({ ...s, index: idx })).filter(s => s.stagedFile);
+      const totalStaged = stagedSlots.length;
+      const finalImageUrls = [...slots.map(s => s.previewUrl)];
 
-      // Upload newly staged local file to Supabase Storage if present
-      if (stagedFile) {
-        showToast("⏳ Uploading photo to Supabase Storage...");
-        const publicUrl = await uploadProductImage(stagedFile, supabase);
-        finalImages = [publicUrl, ...finalImages.filter(u => u !== previewUrl)];
-        showToast("✅ Image uploaded successfully!");
-      } else if (previewUrl && !previewUrl.startsWith('blob:') && !finalImages.includes(previewUrl)) {
-        finalImages = [previewUrl, ...finalImages];
+      if (totalStaged > 0) {
+        for (let i = 0; i < totalStaged; i++) {
+          const { stagedFile, index } = stagedSlots[i];
+          showToast(`⏳ Uploading photo ${i + 1} of ${totalStaged} to Supabase Storage...`);
+          const publicUrl = await uploadProductImage(stagedFile, supabase);
+          finalImageUrls[index] = publicUrl;
+        }
+        showToast("✅ All photos uploaded to Supabase successfully!");
       }
+
+      // Collect all non-empty URLs (up to 3)
+      const finalImages = finalImageUrls.map(u => (u || '').trim()).filter(Boolean).slice(0, 3);
 
       const payload = {
         name,
@@ -190,8 +251,6 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
         isFeatured
       };
 
-      // Only brand new listings can specify initial stock here.
-      // Existing product inventory is adjusted intentionally via adjustProductStock.
       if (!initialProduct) {
         payload.stockQuantity = parseInt(stockQuantity, 10) || 0;
       }
@@ -464,7 +523,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
             />
           </div>
 
-          {/* Direct Image Upload & Live Verification Section */}
+          {/* Direct Image Upload & Live Verification Section (3 Slots) */}
           <div style={{
             marginBottom: '18px',
             background: '#FAF5FF',
@@ -472,9 +531,9 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
             border: '1.5px solid #E9D5FF',
             padding: '16px'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
               <label style={{ fontSize: '13px', fontWeight: 800, color: '#581C87', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>📸 Product Cover Photo</span>
+                <span>📸 Product Photos (Up to 3 Photos)</span>
                 <span style={{
                   fontSize: '11px',
                   fontWeight: 600,
@@ -483,7 +542,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
                   padding: '2px 8px',
                   borderRadius: '12px'
                 }}>
-                  Max 5MB • JPG, PNG, WEBP
+                  Max 5MB each • JPG, PNG, WEBP
                 </span>
               </label>
 
@@ -504,7 +563,7 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
                     boxShadow: uploadMode === 'file' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                   }}
                 >
-                  Upload File
+                  Upload Files
                 </button>
                 <button
                   type="button"
@@ -521,196 +580,254 @@ export default function ProductModal({ isOpen, onClose, onSave, initialProduct }
                     boxShadow: uploadMode === 'url' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                   }}
                 >
-                  Image URL
+                  Image URLs
                 </button>
               </div>
             </div>
 
             {uploadMode === 'file' ? (
               <div>
-                {/* Hidden File Input */}
+                {/* Hidden File Input (supports single or multiple file selection) */}
                 <input
                   ref={fileInputRef}
                   type="file"
                   id="product-file-input"
+                  multiple
                   accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                   style={{ display: 'none' }}
                   onChange={handleFileInputChange}
                 />
 
-                {/* Live Verification Preview Box */}
-                {previewUrl ? (
-                  <div style={{
-                    display: 'flex',
-                    gap: '14px',
-                    background: '#fff',
-                    borderRadius: '12px',
-                    border: '1.5px solid #D8B4FE',
-                    padding: '12px',
-                    alignItems: 'center',
-                    boxShadow: '0 2px 8px rgba(126, 34, 206, 0.08)'
-                  }}>
-                    {/* Thumbnail */}
-                    <div style={{
-                      width: '84px',
-                      height: '84px',
-                      borderRadius: '10px',
-                      overflow: 'hidden',
-                      flexShrink: 0,
-                      background: '#F3F4F6',
-                      border: '1px solid #E5E7EB',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <img
-                        src={previewUrl}
-                        alt="Product preview"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    </div>
+                {/* 3 Upload Slots Grid */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                  gap: '12px'
+                }}>
+                  {SLOT_CONFIG.map((cfg, idx) => {
+                    const slot = slots[idx] || { previewUrl: '', meta: null };
+                    const hasImage = Boolean(slot.previewUrl);
+                    const isDragActive = dragOverSlot === idx;
 
-                    {/* Metadata & Verification Badge */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        <span style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          background: '#DCFCE7',
-                          color: '#15803D',
-                          padding: '2px 8px',
-                          borderRadius: '10px',
-                          display: 'inline-flex',
+                    return (
+                      <div
+                        key={idx}
+                        onDragOver={(e) => { e.preventDefault(); setDragOverSlot(idx); }}
+                        onDragLeave={() => setDragOverSlot(null)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setDragOverSlot(null);
+                          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                            processFilesForSlots(e.dataTransfer.files, idx);
+                          }
+                        }}
+                        style={{
+                          background: hasImage ? '#fff' : (isDragActive ? '#F3E8FF' : '#FAF5FF'),
+                          border: `1.5px ${hasImage ? 'solid #D8B4FE' : 'dashed ' + (isDragActive ? '#7E22CE' : '#C084FC')}`,
+                          borderRadius: '14px',
+                          padding: '10px',
+                          display: 'flex',
+                          flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '4px'
-                        }}>
-                          ✓ {fileMeta?.isExisting ? 'Active Catalog Image' : 'Verified & Ready'}
-                        </span>
-                        {fileMeta?.type && (
+                          textAlign: 'center',
+                          position: 'relative',
+                          transition: 'all 0.2s ease',
+                          boxShadow: hasImage ? '0 2px 8px rgba(126, 34, 206, 0.08)' : 'none'
+                        }}
+                      >
+                        {/* Slot Header / Badges */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginBottom: '8px' }}>
                           <span style={{
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            background: '#F1F5F9',
-                            color: '#475569',
-                            padding: '2px 6px',
-                            borderRadius: '6px'
+                            fontSize: '10.5px',
+                            fontWeight: 800,
+                            color: idx === 0 ? '#92400E' : '#6B21A8',
+                            background: idx === 0 ? '#FEF3C7' : '#EDE9FE',
+                            padding: '2px 7px',
+                            borderRadius: '999px'
                           }}>
-                            {fileMeta.type}
+                            {cfg.badge}
                           </span>
+                          {hasImage && (
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              color: '#15803D',
+                              background: '#DCFCE7',
+                              padding: '1px 6px',
+                              borderRadius: '999px'
+                            }}>
+                              ✓ {slot.meta?.isExisting ? 'Saved' : 'Ready'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Thumbnail or Empty Dropzone */}
+                        {hasImage ? (
+                          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{
+                              width: '100%',
+                              height: '110px',
+                              borderRadius: '10px',
+                              overflow: 'hidden',
+                              background: '#F8FAFC',
+                              border: '1px solid #E2E8F0',
+                              marginBottom: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              <img
+                                src={slot.previewUrl}
+                                alt={`Product slot ${idx + 1}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                            </div>
+
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              color: '#334155',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '100%',
+                              marginBottom: '8px'
+                            }}>
+                              {slot.meta?.name || `Image ${idx + 1}`}
+                            </span>
+
+                            {/* Action Buttons */}
+                            <div style={{ display: 'flex', gap: '6px', width: '100%', justifyContent: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => triggerFileInput(idx)}
+                                style={{
+                                  flex: 1,
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  color: '#6B21A8',
+                                  background: '#F3E8FF',
+                                  border: '1px solid #D8B4FE',
+                                  borderRadius: '6px',
+                                  padding: '4px 6px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                🔄 Replace
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSlot(idx)}
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  color: '#DC2626',
+                                  background: '#FEE2E2',
+                                  border: '1px solid #FECACA',
+                                  borderRadius: '6px',
+                                  padding: '4px 8px',
+                                  cursor: 'pointer'
+                                }}
+                                title="Remove photo"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => triggerFileInput(idx)}
+                            style={{
+                              width: '100%',
+                              minHeight: '135px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              padding: '8px 4px'
+                            }}
+                          >
+                            <div style={{ fontSize: '26px', marginBottom: '4px' }}>📁</div>
+                            <strong style={{ fontSize: '12px', color: '#581C87', display: 'block' }}>
+                              + Upload {idx === 0 ? 'Cover' : `Photo ${idx + 1}`}
+                            </strong>
+                            <span style={{ fontSize: '10px', color: '#7E22CE', marginTop: '3px' }}>
+                              {cfg.desc}
+                            </span>
+                          </div>
                         )}
                       </div>
-
-                      <strong style={{
-                        display: 'block',
-                        fontSize: '13px',
-                        fontWeight: 700,
-                        color: '#1E293B',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {fileMeta?.name || 'Selected Image'}
-                      </strong>
-
-                      <span style={{ fontSize: '11.5px', color: '#64748B', display: 'block', marginTop: '2px' }}>
-                        Size: {fileMeta?.size} • {fileMeta?.dimensions}
-                      </span>
-
-                      {/* Action buttons */}
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          style={{
-                            fontSize: '11.5px',
-                            fontWeight: 700,
-                            color: '#6B21A8',
-                            background: '#F3E8FF',
-                            border: '1px solid #D8B4FE',
-                            borderRadius: '6px',
-                            padding: '3px 10px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          🔄 Replace Photo
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleRemovePhoto}
-                          style={{
-                            fontSize: '11.5px',
-                            fontWeight: 700,
-                            color: '#DC2626',
-                            background: '#FEE2E2',
-                            border: '1px solid #FECACA',
-                            borderRadius: '6px',
-                            padding: '3px 10px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          🗑️ Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Drop / Click-to-Upload Zone */
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    style={{
-                      border: `2px dashed ${isDragging ? '#7E22CE' : '#C084FC'}`,
-                      background: isDragging ? '#F3E8FF' : '#fff',
-                      borderRadius: '12px',
-                      padding: '22px 16px',
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.18s ease'
-                    }}
-                  >
-                    <div style={{ fontSize: '28px', marginBottom: '6px' }}>📁</div>
-                    <strong style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#581C87' }}>
-                      Click to choose or drag & drop your image
-                    </strong>
-                    <span style={{ fontSize: '11px', color: '#7E22CE', display: 'block', marginTop: '3px' }}>
-                      JPEG, JPG, PNG, WEBP • Max 5MB
-                    </span>
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </div>
             ) : (
-              /* URL fallback mode */
-              <div>
-                <input
-                  type="url"
-                  className="form-input"
-                  style={{ width: '100%', boxSizing: 'border-box' }}
-                  placeholder="https://images.unsplash.com/photo-... (paste link)"
-                  value={previewUrl}
-                  onChange={(e) => {
-                    const url = e.target.value;
-                    setPreviewUrl(url);
-                    setImages([url]);
-                    setFileMeta(url ? {
-                      name: 'External Image Link',
-                      size: 'Remote URL',
-                      dimensions: 'Online Asset',
-                      type: 'URL',
-                      isExisting: false
-                    } : null);
-                  }}
-                />
+              /* URL Mode: 3 Clean URL Inputs */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {SLOT_CONFIG.map((cfg, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '8px',
+                      background: '#F1F5F9',
+                      border: '1px solid #E2E8F0',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px'
+                    }}>
+                      {slots[idx]?.previewUrl ? (
+                        <img
+                          src={slots[idx].previewUrl}
+                          alt={`Slot ${idx + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span>{idx === 0 ? '⭐' : '📸'}</span>
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <input
+                        type="url"
+                        className="form-input"
+                        style={{ width: '100%', boxSizing: 'border-box', fontSize: '12px', padding: '8px 12px' }}
+                        placeholder={`Photo ${idx + 1} URL (${cfg.label})`}
+                        value={slots[idx]?.previewUrl || ''}
+                        onChange={(e) => handleUrlChange(idx, e.target.value)}
+                      />
+                    </div>
+                    {slots[idx]?.previewUrl && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSlot(idx)}
+                        style={{
+                          background: '#FEE2E2',
+                          border: '1px solid #FECACA',
+                          color: '#DC2626',
+                          borderRadius: '6px',
+                          padding: '6px 10px',
+                          fontSize: '12px',
+                          cursor: 'pointer'
+                        }}
+                        title="Clear URL"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
             {uploadError && (
               <div style={{
-                marginTop: '8px',
+                marginTop: '10px',
                 padding: '8px 12px',
                 background: '#FEF2F2',
                 borderRadius: '8px',

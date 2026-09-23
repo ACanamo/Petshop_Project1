@@ -1795,7 +1795,7 @@
 
 /* 3. Warm Hero Section */
 .warm-hero-section {
-  background-color: #FFFDF9;
+  background-color: transparent;
   position: relative;
   overflow: hidden;
   min-height: calc(100vh - 72px);
@@ -2160,7 +2160,7 @@
 
 /* 4. What does your pet need? Section */
 .petchup-needs-section {
-  background-color: #FFFDF9;
+  background-color: transparent;
   padding: 60px 0 80px;
 }
 
@@ -2663,7 +2663,7 @@
    -------------------------------------------------------------------------- */
 .insp-featured-section {
   padding: 68px 0 48px;
-  background: #FFFFFF;
+  background: transparent;
 }
 
 .insp-featured-header {
@@ -3035,10 +3035,10 @@
    3. COMMUNITY REVIEWS ("Happy pets. Happy people.")
    -------------------------------------------------------------------------- */
 .insp-reviews-section {
-  background: #FFF9F5;
+  background: rgba(255, 249, 245, 0.4);
   padding: 72px 0;
-  border-top: 1px solid #F6EBE2;
-  border-bottom: 1px solid #F6EBE2;
+  border-top: 1px solid rgba(246, 235, 226, 0.7);
+  border-bottom: 1px solid rgba(246, 235, 226, 0.7);
 }
 
 .insp-reviews-header {
@@ -3115,7 +3115,7 @@
    -------------------------------------------------------------------------- */
 .insp-store-section {
   padding: 72px 0;
-  background: #FFFFFF;
+  background: transparent;
 }
 
 .insp-store-header {

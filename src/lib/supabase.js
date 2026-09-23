@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 // Standard environment configuration via Vite (.env file)
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://yezlwgljhiqzfghltfkw.supabase.co";
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_jJPz6AjY8_s48wmyslkM0g_amgs9piY";
-export const PRIMARY_ADMIN_EMAIL = "canamoaries13@gmail.com";
 
 // Compatibility getters
 export function getSavedUrl() {

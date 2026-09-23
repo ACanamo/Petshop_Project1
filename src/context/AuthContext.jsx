@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { supabase, isConfigured, PRIMARY_ADMIN_EMAIL } from '../lib/supabase';
+import { supabase, isConfigured } from '../lib/supabase';
 import { readJSON, writeJSON } from '../lib/storage';
 import { getPasswordStrength, MIN_PASSWORD_SCORE } from '../lib/passwordStrength';
 import { logError } from '../lib/errorLog';
@@ -31,14 +31,10 @@ async function buildCustomer(authUser) {
     // Auth still works if the optional profile row has not been created yet.
   }
 
-  // Admin status is the profiles.role column (or the JWT's app_metadata role,
-  // which only the service role can set) — full stop. It used to also trust
-  // an email-string match against PRIMARY_ADMIN_EMAIL, which meant admin
-  // status didn't actually live in one place: the DB role column could say
-  // 'customer' and this would still grant admin. See is_admin() in
-  // supabase_schema.sql for the matching server-side fix — that email is
-  const isPrimaryAdmin = Boolean(email && PRIMARY_ADMIN_EMAIL && email.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase());
-  const role = profile?.role === 'admin' || appRole === 'admin' || isPrimaryAdmin ? 'admin' : 'customer';
+  // Admin status is strictly derived from the database profiles.role column
+  // (or the JWT's app_metadata role, which only the Supabase service role can issue).
+  // No client-side email-string backdoor is permitted.
+  const role = profile?.role === 'admin' || appRole === 'admin' ? 'admin' : 'customer';
 
   return {
     id: authUser.id,
@@ -283,12 +279,12 @@ export function AuthProvider({ children }) {
         return { success: true, user: customerObj };
       }
 
-      // Local fallback
+      // Local fallback for offline/demo registration
       const customerObj = {
         id: "cust-" + Date.now(),
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        role: email.trim().toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase() ? "admin" : "customer",
+        role: "customer",
         petName: petName || "Buddy",
         petType: petType || "dog",
         petEmoji: petEmoji,

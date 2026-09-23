@@ -97,30 +97,13 @@ export function OrdersProvider({ children }) {
       if (activeGen !== sessionGeneration || !user) return;
 
       if (Array.isArray(data)) {
-        const cleanCloud = data.filter(o => !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
-        
-        // Merge cloud orders with locally stored disk orders for THIS user
-        setOrders(prevOrders => {
-          const diskOrders = readJSON(storageKey, []) || [];
-          const combined = [
-            ...cleanCloud,
-            ...(prevOrders || []),
-            ...(Array.isArray(diskOrders) ? diskOrders : [])
-          ];
-          
-          const map = new Map();
-          for (const item of combined) {
-            if (item && item.id && !["ord-1001", "ord-1002", "ord-1003"].includes(item.id)) {
-              if (!map.has(item.id)) {
-                map.set(item.id, item);
-              }
-            }
-          }
-          const merged = Array.from(map.values());
-          merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-          writeJSON(storageKey, merged);
-          return merged;
-        });
+        const cleanCloud = data.filter(o => o && o.id && !["ord-1001", "ord-1002", "ord-1003"].includes(o.id));
+        cleanCloud.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+        // Authoritative server state: overwrite local cache so deleted, cancelled,
+        // or archived records from the backend are not resurrected from stale disk copies.
+        setOrders(cleanCloud);
+        writeJSON(storageKey, cleanCloud);
       }
     } catch (err) {
       logError('OrdersContext.syncOrders', err);

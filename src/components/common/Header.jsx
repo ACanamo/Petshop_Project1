@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   GearIcon as Gear,
   UserCircleIcon as UserCircle,
@@ -210,8 +211,10 @@ export default function Header() {
             )}
           </div>
 
-          {/* Cart Pill Button */}
-          <button
+          {/* Cart Pill Button with Framer Motion spring */}
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.95 }}
             type="button"
             className={`petchup-cart-btn ${cartBump ? 'is-bumping' : ''}`}
             id="cart-toggle-btn"
@@ -220,12 +223,22 @@ export default function Header() {
           >
             <ShoppingCartSimple size={18} weight="bold" className="cart-svg-icon" aria-hidden="true" />
             <span className="cart-label">Cart</span>
-            {totalCount > 0 && (
-              <span className="cart-counter-badge" id="cart-counter">
-                {totalCount}
-              </span>
-            )}
-          </button>
+            <AnimatePresence mode="popLayout">
+              {totalCount > 0 && (
+                <motion.span
+                  key={totalCount}
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.4, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                  className="cart-counter-badge"
+                  id="cart-counter"
+                >
+                  {totalCount}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
 
           {/* Mobile Menu Hamburger */}
           <button

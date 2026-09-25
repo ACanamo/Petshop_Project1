@@ -154,7 +154,6 @@ export default function CartDrawer() {
 
     setIsSubmitting(true);
     setCheckoutError(null);
-    showToast("🚀 Processing your checkout order...");
 
     try {
       const purchasedItemIds = quote.items.map(it => it.id);

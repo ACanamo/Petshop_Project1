@@ -39,6 +39,13 @@ export default function CartDrawer() {
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
+  const [checkoutError, setCheckoutError] = useState(null);
+
+  useEffect(() => {
+    if (!isCartOpen) {
+      setCheckoutError(null);
+    }
+  }, [isCartOpen]);
 
   // Close on Escape key
   useEffect(() => {
@@ -146,6 +153,7 @@ export default function CartDrawer() {
     }
 
     setIsSubmitting(true);
+    setCheckoutError(null);
     showToast("🚀 Processing your checkout order...");
 
     try {
@@ -186,7 +194,9 @@ export default function CartDrawer() {
       }, 500);
     } catch (err) {
       setIsSubmitting(false);
-      showToast(err.message || "Could not complete checkout. Please try again.");
+      const msg = err.message || "Could not complete checkout. Please try again.";
+      setCheckoutError(msg);
+      showToast(msg);
       logError('CartDrawer.handleCheckout', err);
     }
   };
@@ -440,6 +450,56 @@ export default function CartDrawer() {
                           {formatPeso(grandTotal)}
                         </strong>
                       </div>
+                    )}
+
+                    {checkoutError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="cart-checkout-error-banner"
+                        role="alert"
+                        style={{
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          color: '#991b1b',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          fontSize: '13px',
+                          lineHeight: '1.4',
+                          marginBottom: '12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                          <span>⚠️ Checkout issue:</span>
+                        </div>
+                        <div>{checkoutError}</div>
+                        {(checkoutError.toLowerCase().includes('permission') || checkoutError.toLowerCase().includes('sign in') || checkoutError.toLowerCase().includes('jwt') || checkoutError.toLowerCase().includes('auth')) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              closeCart();
+                              navigate('/login', { state: { from: location.pathname } });
+                            }}
+                            style={{
+                              alignSelf: 'flex-start',
+                              marginTop: '4px',
+                              padding: '4px 10px',
+                              background: '#dc2626',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Sign in again
+                          </button>
+                        )}
+                      </motion.div>
                     )}
 
                     <motion.button

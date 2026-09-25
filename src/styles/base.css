@@ -43,23 +43,6 @@ body {
   min-height: 100vh;
 }
 
-/* Petchup Brand Background: Cozy Toasted Biscuit & Organic Clay Contours */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url('/images/bg_main_organic_clay.jpg');
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
-  opacity: 0.95;
-  pointer-events: none;
-  z-index: -1;
-}
-
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;

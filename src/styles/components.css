@@ -1754,7 +1754,12 @@
 
 /* 3. Warm Hero Section */
 .warm-hero-section {
-  background-color: transparent;
+  background-color: #FBF9F4;
+  background-image: url('/images/bg_main_organic_clay.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
   position: relative;
   overflow: hidden;
   min-height: calc(100vh - 72px);

@@ -6,15 +6,11 @@ export default function StoreLocation() {
       <div className="insp-container">
         {/* Header */}
         <div className="insp-store-header">
+          <span className="insp-store-eyebrow">PHYSICAL FLAGSHIP</span>
           <h2 id="visit-heading" className="insp-section-title">
             Come say hello, in person.
-            <span className="insp-sparkle" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="#FF6B35"/>
-              </svg>
-            </span>
           </h2>
-          <p className="insp-section-sub">Visit our shop and find something your pet will love.</p>
+          <p className="insp-section-sub">Experience our curated products and bring your companion along.</p>
         </div>
 
         {/* 2-Column Content */}
@@ -31,16 +27,6 @@ export default function StoreLocation() {
 
           {/* Right Column: Info & Action Card */}
           <div className="insp-store-info-card">
-            {/* Corner Decorative Paw */}
-            <div className="insp-store-paw-decor" aria-hidden="true">
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="#FCE4D6">
-                <path d="M12 14c-1.66 0-3 1.34-3 3 0 1.3.84 2.4 2 2.82V21a1 1 0 0 0 2 0v-1.18c1.16-.42 2-1.52 2-2.82 0-1.66-1.34-3-3-3z"/>
-                <circle cx="6.5" cy="11.5" r="2"/>
-                <circle cx="9.5" cy="7.5" r="2"/>
-                <circle cx="14.5" cy="7.5" r="2"/>
-                <circle cx="17.5" cy="11.5" r="2"/>
-              </svg>
-            </div>
 
             <h3 className="insp-store-title">
               Visit <span className="insp-brand-highlight">PETCHUP</span>

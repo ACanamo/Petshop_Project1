@@ -158,7 +158,7 @@ export default function Header() {
                       <span>{user.email}</span>
                       {user.petName && (
                         <div className="dropdown-pet-tag">
-                          Pet: {user.petEmoji || "🐶"} {user.petName}
+                          Companion: {user.petName}
                         </div>
                       )}
                     </div>

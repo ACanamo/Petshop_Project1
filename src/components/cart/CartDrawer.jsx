@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { XIcon, TrashIcon } from '@phosphor-icons/react';
+import { XIcon, TrashIcon, ShoppingBagIcon as ShoppingBag } from '@phosphor-icons/react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useCart } from '../../context/CartContext';
 import { useOrders } from '../../context/OrdersContext';
@@ -253,7 +253,7 @@ export default function CartDrawer() {
               }}
             >
               <div className="cart-drawer-header">
-                <h2 className="cart-drawer-title">Your Cart 🛒</h2>
+                <h2 className="cart-drawer-title">Your Cart</h2>
                 <motion.button
                   whileHover={{ scale: 1.12, rotate: 90 }}
                   whileTap={{ scale: 0.88 }}
@@ -302,7 +302,7 @@ export default function CartDrawer() {
                       style={{ overflow: 'hidden' }}
                     >
                       <span id="cart-applied-label">
-                        🎉 {activeDiscount.code} (-{activeDiscount.percent}%) Applied!
+                        {activeDiscount.code} (-{activeDiscount.percent}%) Applied
                       </span>
                       <motion.button
                         whileHover={{ scale: 1.06 }}
@@ -332,10 +332,12 @@ export default function CartDrawer() {
                       transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                       className="cart-empty-state"
                     >
-                      <div className="empty-emoji">🎾</div>
-                      <p className="empty-title">Your cart is empty!</p>
+                      <div className="empty-cart-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                        <ShoppingBag size={46} weight="light" color="#E85923" />
+                      </div>
+                      <p className="empty-title">Your cart is empty</p>
                       <p className="empty-sub">
-                        Add some crunchy feeds, squeaky toys, or cozy leashes to get started.
+                        Explore our wholesome feeds, durable gear, and daily wellness items.
                       </p>
                       <Link
                         to="/shop"
@@ -343,7 +345,7 @@ export default function CartDrawer() {
                         className="btn btn-primary btn-pill"
                         style={{ marginTop: '18px', display: 'inline-flex' }}
                       >
-                        Continue Shopping 🐾
+                        Continue Shopping
                       </Link>
                     </motion.div>
                   ) : (
@@ -510,7 +512,7 @@ export default function CartDrawer() {
                       onClick={handleCheckout}
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? "Processing..." : `Checkout Now 🐾 (${formatPeso(grandTotal)})`}
+                      {isSubmitting ? "Processing..." : `Checkout Now (${formatPeso(grandTotal)})`}
                     </motion.button>
                   </motion.div>
                 )}

@@ -36,24 +36,17 @@ export default function FeaturedProducts() {
         {/* Section Header */}
         <div className="insp-featured-header">
           <div className="insp-featured-title-group">
+            <span className="insp-section-eyebrow">CURATED HIGHLIGHTS</span>
             <h2 id="essentials-heading" className="insp-section-title">
-              Little things. Big tail wags.
-              <span className="insp-sparkle" aria-hidden="true">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="#FF6B35"/>
-                  <circle cx="18" cy="4" r="1.5" fill="#FFB020"/>
-                </svg>
-              </span>
+              Little things. Big moments.
             </h2>
-            <p className="insp-section-sub">Discover everyday essentials picked for your pets.</p>
+            <p className="insp-section-sub">Everyday staples chosen for performance, health and joy.</p>
           </div>
 
           <div className="insp-featured-actions">
-            {/* View all link */}
             <div className="insp-view-all-box">
-              <span className="insp-sample-note">Sample products &amp; prices</span>
               <Link to="/shop" className="insp-view-all-link">
-                View all products <span aria-hidden="true">&rarr;</span>
+                View all essentials <span aria-hidden="true">&rarr;</span>
               </Link>
             </div>
           </div>
@@ -81,7 +74,7 @@ export default function FeaturedProducts() {
                   onClick={(e) => toggleFavorite(e, item.id)}
                   aria-label={isFav ? `Remove ${item.name} from wishlist` : `Add ${item.name} to wishlist`}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill={isFav ? "#FF5A36" : "none"} stroke="#FF5A36" strokeWidth="2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={isFav ? "#E85923" : "none"} stroke="#E85923" strokeWidth="2">
                     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                   </svg>
                 </button>
@@ -96,8 +89,12 @@ export default function FeaturedProducts() {
                       loading="lazy"
                     />
                   ) : (
-                    <div style={{ fontSize: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                      {item.img || '🐾'}
+                    <div className="insp-product-placeholder">
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#A8A29E" strokeWidth="1.5">
+                        <rect x="3" y="3" width="18" height="18" rx="3"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <path d="M21 15l-5-5L5 21"/>
+                      </svg>
                     </div>
                   )}
                 </div>
@@ -116,12 +113,12 @@ export default function FeaturedProducts() {
                   onClick={(e) => handleAdd(e, item)}
                   aria-label={`Add ${item.name} to cart`}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <circle cx="9" cy="21" r="1"></circle>
                     <circle cx="20" cy="21" r="1"></circle>
                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                   </svg>
-                  <span>{isAdded ? 'Added! ✨' : 'Add to cart'}</span>
+                  <span>{isAdded ? 'Added to cart' : 'Add to cart'}</span>
                 </button>
               </article>
             );

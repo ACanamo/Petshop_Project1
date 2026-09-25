@@ -52,7 +52,20 @@ export default function OrderSuccessModal({ order, onClose }) {
           padding: '36px 24px 24px',
           background: 'linear-gradient(135deg, var(--play-orange, #FF6B35) 0%, #FF834E 100%)'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '8px' }}>🎉</div>
+          <div style={{
+            width: '52px',
+            height: '52px',
+            borderRadius: '50%',
+            background: 'rgba(255, 255, 255, 0.22)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 12px'
+          }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
           <h3 id="order-success-title" style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#fff' }}>
             Order Confirmed!
           </h3>

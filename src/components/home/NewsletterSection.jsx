@@ -8,7 +8,7 @@ export default function NewsletterSection() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!email) return;
-    showToast(`🎉 Thanks for joining the pack, ${email}! Check your inbox for your welcome discount.`);
+    showToast(`Thank you for joining Petchup, ${email}! Check your inbox for your welcome discount.`);
     setEmail('');
   };
 
@@ -19,15 +19,15 @@ export default function NewsletterSection() {
           {/* Left Content */}
           <div className="insp-newsletter-content">
             <div className="insp-newsletter-icon" aria-hidden="true">
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
-                <rect x="2" y="4" width="20" height="16" rx="3" fill="#FFFFFF" fillOpacity="0.2"/>
-                <path d="M22 6L12 13L2 6" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <rect x="2" y="4" width="20" height="16" rx="3" stroke="#FFFFFF" strokeWidth="2"/>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <rect x="2" y="4" width="20" height="16" rx="3" fill="#FFFFFF" fillOpacity="0.12"/>
+                <path d="M22 6L12 13L2 6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <rect x="2" y="4" width="20" height="16" rx="3" stroke="#FFFFFF" strokeWidth="1.6"/>
               </svg>
             </div>
             <div className="insp-newsletter-text">
               <h2 className="insp-newsletter-title">A little joy in your inbox.</h2>
-              <p className="insp-newsletter-sub">Pet tips, new arrivals and little things to love.</p>
+              <p className="insp-newsletter-sub">Pet wellness tips, new arrivals, and subscriber-only privileges.</p>
             </div>
           </div>
 
@@ -44,17 +44,10 @@ export default function NewsletterSection() {
                 aria-label="Email address for pet newsletter"
               />
               <button type="submit" className="insp-newsletter-submit-btn">
-                Join the pack
+                Subscribe
               </button>
             </div>
           </form>
-
-          {/* Sparkle Accent */}
-          <div className="insp-newsletter-sparkle" aria-hidden="true">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="#FFFFFF" fillOpacity="0.8"/>
-            </svg>
-          </div>
         </div>
       </div>
     </section>

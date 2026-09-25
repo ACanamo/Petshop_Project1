@@ -74,7 +74,7 @@ export default function ShopPage() {
       <div className="play-wrap shop-catalog-wrap">
         <div className="shop-catalog-header">
           <span className="play-section-pill">Fresh &amp; Wholesome Goodies</span>
-          <h1 className="play-section-title shop-catalog-title">PETCHUP Shop Catalog 🐾</h1>
+          <h1 className="play-section-title shop-catalog-title">PETCHUP Catalog</h1>
           <p className="play-section-sub shop-catalog-sub">
             Browse our hand-curated feeds, high-tensile leashes, calming beds, and vet-backed wellness oils.
           </p>

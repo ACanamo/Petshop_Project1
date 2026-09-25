@@ -1803,27 +1803,35 @@
 }
 
 .hero-content {
-  max-width: 520px;
+  max-width: 540px;
 }
 
 .hero-kicker-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.hero-kicker-pill {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #E85923;
+  background: rgba(232, 89, 35, 0.08);
+  padding: 5px 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(232, 89, 35, 0.2);
 }
 
 .hero-kicker-text {
   font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
   font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: #2D3142;
-}
-
-.hero-kicker-spark {
-  display: inline-flex;
-  align-items: center;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #6E6760;
 }
 
 .hero-display-heading {
@@ -1832,7 +1840,7 @@
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.025em;
-  color: #1E2024;
+  color: #171412;
   margin: 0 0 20px;
 }
 
@@ -1847,10 +1855,10 @@
 .hero-subtext {
   font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
   font-size: 1.15rem;
-  line-height: 1.55;
+  line-height: 1.6;
   color: #64748B;
   margin: 0 0 32px;
-  max-width: 440px;
+  max-width: 460px;
 }
 
 .hero-cta-group {
@@ -1867,19 +1875,19 @@
   background-color: #E85923;
   color: #FFFFFF;
   border-radius: 9999px;
-  padding: 13px 28px;
+  padding: 14px 30px;
   font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
   font-size: 15px;
   font-weight: 700;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(232, 89, 35, 0.28);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px rgba(232, 89, 35, 0.28);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-cta-btn-primary:hover {
   background-color: #D04B19;
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px rgba(232, 89, 35, 0.38);
+  box-shadow: 0 8px 24px rgba(232, 89, 35, 0.36);
 }
 
 .hero-cta-btn-primary .cta-arrow {
@@ -1888,17 +1896,17 @@
 }
 
 .hero-cta-btn-primary:hover .cta-arrow {
-  transform: translateX(3px);
+  transform: translateX(4px);
 }
 
 .hero-cta-btn-secondary {
   display: inline-flex;
   align-items: center;
   background-color: transparent;
-  color: #1E2024;
-  border: 1.8px solid #232220;
+  color: #171412;
+  border: 1.5px solid rgba(23, 20, 18, 0.3);
   border-radius: 9999px;
-  padding: 12px 26px;
+  padding: 13px 28px;
   font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
   font-size: 15px;
   font-weight: 700;
@@ -1907,12 +1915,12 @@
 }
 
 .hero-cta-btn-secondary:hover {
-  background-color: #F8F6F0;
-  border-color: #E85923;
-  color: #E85923;
+  background-color: rgba(23, 20, 18, 0.04);
+  border-color: #171412;
+  color: #171412;
 }
 
-/* Hero Media Stage — Blended HD Composition */
+/* Hero Media Stage — Architectural Composition */
 .hero-media-wrapper {
   position: relative;
   display: flex;
@@ -1930,78 +1938,30 @@
   justify-content: center;
 }
 
-/* Background Peach Circle behind dog */
-.stage-shape-peach {
+/* Atmospheric Ambient Glow Backdrop */
+.stage-shape-ambient {
   position: absolute;
-  width: 78%;
+  width: 86%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  background: #FBD4B6;
-  left: 6%;
+  background: radial-gradient(circle at 45% 45%, rgba(232, 89, 35, 0.1) 0%, rgba(247, 244, 238, 0.75) 55%, transparent 75%);
+  left: 7%;
   top: 5%;
   z-index: 1;
   pointer-events: none;
 }
 
-/* Background Sunny Yellow Disc behind cat */
-.stage-shape-sun {
+/* Subtle Stage Frame Accent */
+.stage-frame-accent {
   position: absolute;
-  width: 29%;
+  width: 78%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  background: #FEF08A;
-  right: 6%;
+  border: 1px solid rgba(232, 89, 35, 0.12);
+  left: 11%;
   top: 9%;
   z-index: 1;
   pointer-events: none;
-}
-
-/* Decorative Doodle Paw */
-.stage-doodle-paw {
-  position: absolute;
-  left: 0%;
-  top: 28%;
-  z-index: 2;
-  pointer-events: none;
-  transform: rotate(-16deg);
-}
-
-/* Decorative Doodle Hearts */
-.stage-doodle-hearts {
-  position: absolute;
-  top: 11%;
-  left: 54%;
-  z-index: 2;
-  pointer-events: none;
-}
-
-/* Handwritten Script "For dogs & cats" */
-.stage-script-tag {
-  position: absolute;
-  top: 6%;
-  right: 0%;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  pointer-events: none;
-  transform: rotate(3deg);
-}
-
-.stage-script-tag .script-label {
-  font-family: 'Caveat', cursive, sans-serif;
-  font-size: clamp(20px, 2.4vw, 25px);
-  font-weight: 700;
-  color: #2D3142;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
-
-.stage-script-tag .script-underline {
-  width: 105px;
-  height: 14px;
-  margin-top: -2px;
 }
 
 /* Grounding Contact Shadow */
@@ -2010,9 +1970,9 @@
   bottom: 0;
   left: 6%;
   width: 88%;
-  height: 26px;
+  height: 28px;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(65, 35, 15, 0.12) 0%, rgba(65, 35, 15, 0.04) 50%, transparent 75%);
+  background: radial-gradient(ellipse at center, rgba(23, 20, 18, 0.12) 0%, rgba(23, 20, 18, 0.03) 50%, transparent 75%);
   z-index: 2;
   pointer-events: none;
 }
@@ -2025,24 +1985,26 @@
   height: auto;
   display: block;
   object-fit: contain;
-  filter: drop-shadow(0 12px 28px rgba(60, 30, 10, 0.06));
+  filter: drop-shadow(0 14px 32px rgba(23, 20, 18, 0.08));
 }
 
 /* Floating Daily Essentials Card */
 .daily-essentials-card-link {
   position: absolute;
-  bottom: 2%;
-  left: -10px;
+  bottom: 4%;
+  left: -12px;
   z-index: 10;
   text-decoration: none;
 }
 
 .daily-essentials-card {
-  background: #FFFFFF;
-  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
   padding: 10px 10px 12px;
-  box-shadow: 0 16px 36px rgba(45, 25, 10, 0.12), 0 3px 10px rgba(45, 25, 10, 0.04);
-  border: 1px solid rgba(254, 215, 170, 0.5);
+  box-shadow: 0 16px 36px rgba(23, 20, 18, 0.09), 0 2px 8px rgba(23, 20, 18, 0.04);
+  border: 1px solid rgba(23, 20, 18, 0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2051,39 +2013,33 @@
 }
 
 .daily-essentials-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 22px 44px rgba(45, 25, 10, 0.18), 0 6px 14px rgba(45, 25, 10, 0.06);
+  transform: translateY(-4px);
+  box-shadow: 0 22px 44px rgba(23, 20, 18, 0.14), 0 4px 12px rgba(23, 20, 18, 0.06);
+  border-color: rgba(232, 89, 35, 0.3);
 }
 
 .essentials-img-wrap {
   position: relative;
   width: 100%;
-  background: #FDF7F0;
-  border-radius: 16px;
+  background: #FAF8F5;
+  border-radius: 14px;
   padding: 10px 8px 8px;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-.essentials-sparkles {
-  position: absolute;
-  top: 14px;
-  right: 6px;
-  pointer-events: none;
-}
-
 .essentials-photo {
   width: 100%;
-  max-width: 130px;
+  max-width: 125px;
   height: auto;
   display: block;
   object-fit: contain;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.06));
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.05));
 }
 
 .essentials-btn-wrap {
-  margin-top: -12px;
+  margin-top: -10px;
   z-index: 2;
 }
 
@@ -2092,41 +2048,30 @@
   align-items: center;
   gap: 6px;
   background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 7px 16px;
+  border: 1px solid rgba(23, 20, 18, 0.1);
+  padding: 6px 14px;
   border-radius: 9999px;
   font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
-  color: #1E2024;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  color: #171412;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
 
 .daily-essentials-card:hover .hotspot-pill {
   color: #E85923;
-  box-shadow: 0 6px 18px rgba(232, 89, 35, 0.22);
+  border-color: rgba(232, 89, 35, 0.3);
 }
 
-.hotspot-arrow {
-  transition: transform 0.2s ease;
-}
-
-.daily-essentials-card:hover .hotspot-arrow {
-  transform: translateX(3px);
-}
-
-/* 4. What does your pet need? Section */
+/* 4. Essential Categories Section ("What does your companion need?") */
 .petchup-needs-section {
   position: relative;
-  background: 
-    radial-gradient(ellipse 75% 65% at 50% 100%, rgba(232, 89, 35, 0.12) 0%, rgba(232, 89, 35, 0) 70%),
-    linear-gradient(180deg, #FFFFFF 0%, #FFF9F4 45%, #FDE9DC 100%);
-  border-top: 1px solid rgba(232, 89, 35, 0.08);
-  border-bottom: 1px solid rgba(232, 89, 35, 0.08);
-  padding: 72px 0 88px;
-  box-shadow: 0 6px 30px rgba(232, 89, 35, 0.05);
+  background: #FAF8F5;
+  border-top: 1px solid rgba(23, 20, 18, 0.06);
+  border-bottom: 1px solid rgba(23, 20, 18, 0.06);
+  padding: 80px 0 96px;
 }
 
 .needs-container {
@@ -2141,94 +2086,103 @@
   align-items: flex-end;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 36px;
 }
 
 .needs-title-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.needs-eyebrow,
+.insp-section-eyebrow,
+.insp-reviews-eyebrow,
+.insp-store-eyebrow,
+.insp-banner-tag {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #E85923;
+  margin-bottom: 4px;
 }
 
 .needs-heading {
   font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: clamp(1.8rem, 3.2vw, 2.3rem);
+  font-size: clamp(1.9rem, 3.2vw, 2.5rem);
   font-weight: 800;
-  color: #1E2024;
+  color: #171412;
   margin: 0;
   letter-spacing: -0.02em;
 }
 
-.needs-spark {
-  display: inline-flex;
-  align-items: center;
-}
-
 .needs-subheading {
   font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: 14px;
+  font-size: 14.5px;
+  line-height: 1.5;
   font-weight: 500;
   color: #64748B;
   margin: 0;
+  max-width: 420px;
 }
 
 .needs-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  gap: 22px;
 }
 
-.needs-card {
-  border-radius: 20px;
-  padding: 20px 20px 16px;
-  text-decoration: none;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 190px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-}
 .needs-hd-card {
   position: relative;
-  border-radius: 24px;
+  border-radius: 20px;
   overflow: hidden;
   text-decoration: none;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  height: 210px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease;
+  height: 230px;
+  background: #FFFFFF;
+  border: 1px solid rgba(23, 20, 18, 0.08);
+  box-shadow: 0 4px 18px rgba(23, 20, 18, 0.04);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease, border-color 0.2s ease;
 }
 
 .needs-hd-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 16px 36px rgba(23, 20, 18, 0.09);
+  border-color: rgba(232, 89, 35, 0.4);
 }
 
 .needs-hd-card-header {
   position: absolute;
   top: 18px;
   left: 20px;
+  right: 20px;
   z-index: 10;
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: flex-start;
-  gap: 8px;
+  gap: 12px;
   pointer-events: none;
 }
 
 .needs-hd-card-title {
   font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
-  color: #1E2024;
-  margin: 0;
+  color: #171412;
+  margin: 0 0 2px;
   letter-spacing: -0.01em;
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6);
+}
+
+.needs-hd-card-sub {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6E6760;
+  display: block;
 }
 
 .needs-hd-card-arrow {
@@ -2236,18 +2190,21 @@
   height: 32px;
   border-radius: 50%;
   background-color: #FFFFFF;
+  border: 1px solid rgba(23, 20, 18, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1E2024;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  color: #171412;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
 }
 
 .needs-hd-card:hover .needs-hd-card-arrow {
   background-color: #E85923;
+  border-color: #E85923;
   color: #FFFFFF;
-  transform: scale(1.1);
+  transform: scale(1.08);
 }
 
 .needs-hd-photo-wrap {
@@ -2799,38 +2756,38 @@
 }
 
 .insp-product-price {
-  font-size: 19px;
-  font-weight: 900;
-  color: #FF5A36;
+  font-size: 18px;
+  font-weight: 800;
+  color: #E85923;
 }
 
 .insp-add-cart-btn {
   width: 100%;
-  background: #FF5A36;
+  background: #171412;
   color: #FFFFFF;
   border: none;
   border-radius: 9999px;
-  padding: 11px 16px;
-  font-size: 14px;
-  font-weight: 800;
+  padding: 11px 18px;
+  font-size: 13.5px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 14px rgba(255, 90, 54, 0.25);
+  box-shadow: 0 3px 10px rgba(23, 20, 18, 0.15);
 }
 
 .insp-add-cart-btn:hover {
-  background: #E04826;
+  background: #E85923;
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(255, 90, 54, 0.35);
+  box-shadow: 0 6px 18px rgba(232, 89, 35, 0.28);
 }
 
 .insp-add-cart-btn.is-added {
-  background: #059669;
-  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
+  background: #166534;
+  box-shadow: 0 4px 14px rgba(22, 101, 52, 0.25);
 }
 
 /* --------------------------------------------------------------------------
@@ -2848,132 +2805,71 @@
 }
 
 .insp-banner-card {
-  border-radius: 26px;
-  padding: 32px 30px;
+  border-radius: 24px;
+  padding: 36px 32px;
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: #FAF8F5;
+  border: 1px solid rgba(23, 20, 18, 0.08);
+  box-shadow: 0 4px 20px rgba(23, 20, 18, 0.03);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease;
 }
 
 .insp-banner-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.07);
-}
-
-.insp-banner-dog {
-  background: linear-gradient(135deg, #FDECE2 0%, #FCE4D6 100%);
-}
-
-.insp-banner-cat {
-  background: linear-gradient(135deg, #FEF7E6 0%, #FEF0CB 100%);
+  box-shadow: 0 16px 36px rgba(23, 20, 18, 0.07);
+  border-color: rgba(232, 89, 35, 0.3);
 }
 
 .insp-banner-content {
-  max-width: 58%;
+  max-width: 56%;
   z-index: 2;
 }
 
-.insp-doodle-heart,
-.insp-banner-heart-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin-bottom: 8px;
-  cursor: pointer;
-  outline: none;
-  transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.insp-banner-heart-btn:hover {
-  transform: scale(1.22);
-}
-
-.insp-banner-heart-btn:active {
-  transform: scale(0.88);
-}
-
-.insp-banner-heart-btn.is-liked svg {
-  animation: heartPop 0.38s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.insp-banner-heart-btn:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 4px;
-  border-radius: 4px;
-}
-
 .insp-banner-title {
-  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
   font-size: 1.85rem;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1.15;
-  color: #232220;
+  color: #171412;
   margin: 0 0 10px;
-}
-
-.highlight-dog {
-  color: #FF5A36;
-}
-
-.highlight-cat {
-  color: #E65100;
+  letter-spacing: -0.02em;
 }
 
 .insp-banner-sub {
-  font-size: 14.5px;
-  color: #52525B;
+  font-size: 14px;
+  color: #64748B;
   margin: 0 0 22px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .insp-banner-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 22px;
+  padding: 11px 22px;
   border-radius: 9999px;
   font-size: 13.5px;
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
+  background: #171412;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(23, 20, 18, 0.15);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.dog-btn {
-  background: #FFFFFF;
-  color: #FF5A36;
-  border: 1.5px solid rgba(255, 90, 54, 0.35);
-  box-shadow: 0 4px 14px rgba(255, 90, 54, 0.12);
-}
-
-.dog-btn:hover {
-  background: #FF5A36;
-  color: #FFFFFF;
-  border-color: #FF5A36;
-}
-
-.cat-btn {
-  background: #FFFFFF;
-  color: #E65100;
-  border: 1.5px solid rgba(230, 81, 0, 0.35);
-  box-shadow: 0 4px 14px rgba(230, 81, 0, 0.12);
-}
-
-.cat-btn:hover {
-  background: #E65100;
-  color: #FFFFFF;
-  border-color: #E65100;
+.insp-banner-btn:hover {
+  background: #E85923;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(232, 89, 35, 0.28);
 }
 
 .insp-banner-visual {
-  max-width: 48%;
+  max-width: 44%;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -2983,32 +2879,31 @@
 
 .insp-banner-img {
   width: 100%;
-  max-width: 260px;
-  max-height: 195px;
+  max-width: 240px;
+  max-height: 185px;
   object-fit: cover;
-  border-radius: 20px;
-  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+  border-radius: 18px;
+  box-shadow: 0 10px 24px -4px rgba(23, 20, 18, 0.08);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .insp-banner-card:hover .insp-banner-img {
-  transform: scale(1.03) rotate(0.8deg);
-  box-shadow: 0 16px 32px -6px rgba(0, 0, 0, 0.12), 0 6px 12px -3px rgba(0, 0, 0, 0.06);
+  transform: scale(1.03);
 }
 
 /* --------------------------------------------------------------------------
-   3. COMMUNITY REVIEWS ("Happy pets. Happy people.")
+   3. COMMUNITY REVIEWS ("Loved by companions & their humans")
    -------------------------------------------------------------------------- */
 .insp-reviews-section {
-  background: rgba(255, 249, 245, 0.4);
-  padding: 72px 0;
-  border-top: 1px solid rgba(246, 235, 226, 0.7);
-  border-bottom: 1px solid rgba(246, 235, 226, 0.7);
+  background: #FAF8F5;
+  padding: 80px 0;
+  border-top: 1px solid rgba(23, 20, 18, 0.06);
+  border-bottom: 1px solid rgba(23, 20, 18, 0.06);
 }
 
 .insp-reviews-header {
   text-align: center;
-  margin-bottom: 44px;
+  margin-bottom: 48px;
 }
 
 .insp-reviews-grid {
@@ -3019,38 +2914,33 @@
 
 .insp-review-card {
   background: #FFFFFF;
-  border: 1px solid #F2E8DF;
+  border: 1px solid rgba(23, 20, 18, 0.08);
   border-radius: 20px;
-  padding: 28px 24px;
+  padding: 30px 26px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.02);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 4px 18px rgba(23, 20, 18, 0.03);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease;
 }
 
 .insp-review-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 14px 32px rgba(23, 20, 18, 0.06);
+  border-color: rgba(232, 89, 35, 0.25);
 }
 
-.insp-quote-icon {
-  margin-bottom: 12px;
-}
-
-.insp-review-tag {
-  font-size: 11.5px;
-  font-weight: 800;
-  color: #FF5A36;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.insp-review-stars {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
 }
 
 .insp-review-quote {
-  font-size: 15.5px;
-  line-height: 1.5;
-  color: #27272A;
-  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #171412;
+  font-style: italic;
+  font-weight: 500;
   margin: 0 0 24px;
   flex-grow: 1;
 }
@@ -3062,29 +2952,36 @@
 }
 
 .insp-review-avatar {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #FFE4D6;
+  border: 1.5px solid rgba(232, 89, 35, 0.25);
 }
 
 .insp-review-author {
   font-size: 13.5px;
   font-weight: 700;
-  color: #52525B;
+  color: #171412;
+  display: block;
+}
+
+.insp-review-pet-name {
+  font-size: 12px;
+  color: #6E6760;
+  display: block;
 }
 
 /* --------------------------------------------------------------------------
    4. STORE LOCATION ("Come say hello, in person.")
    -------------------------------------------------------------------------- */
 .insp-store-section {
-  padding: 72px 0;
-  background: transparent;
+  padding: 80px 0;
+  background: #FFFFFF;
 }
 
 .insp-store-header {
-  margin-bottom: 36px;
+  margin-bottom: 40px;
 }
 
 .insp-store-grid {
@@ -3098,7 +2995,7 @@
   border-radius: 24px;
   overflow: hidden;
   background: #F8F6F0;
-  border: 1px solid #EAE3D6;
+  border: 1px solid rgba(23, 20, 18, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3112,8 +3009,8 @@
 }
 
 .insp-store-info-card {
-  background: #FFFFFF;
-  border: 1.5px solid #F0ECE4;
+  background: #FAF8F5;
+  border: 1px solid rgba(23, 20, 18, 0.08);
   border-radius: 24px;
   padding: 38px 34px;
   display: flex;
@@ -3122,23 +3019,17 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.03);
 }
 
-.insp-store-paw-decor {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  opacity: 0.7;
-}
-
 .insp-store-title {
-  font-family: var(--font-display, 'Outfit', sans-serif);
-  font-size: 1.85rem;
-  font-weight: 900;
-  color: #232220;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #171412;
   margin: 0 0 24px;
+  letter-spacing: -0.02em;
 }
 
 .insp-brand-highlight {
-  color: #FF5A36;
+  color: #E85923;
 }
 
 .insp-store-details-list {
@@ -3154,7 +3045,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
   color: #52525B;
 }
@@ -3163,7 +3054,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #FFF0EB;
+  background: rgba(232, 89, 35, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3178,34 +3069,35 @@
 }
 
 .insp-btn-primary {
-  background: #FF5A36;
+  background: #E85923;
   color: #FFFFFF;
   border: none;
   border-radius: 9999px;
-  padding: 12px 24px;
+  padding: 12px 26px;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(255, 90, 54, 0.25);
+  box-shadow: 0 4px 14px rgba(232, 89, 35, 0.25);
 }
 
 .insp-btn-primary:hover {
-  background: #E04826;
+  background: #D04B19;
   transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(232, 89, 35, 0.35);
 }
 
 .insp-btn-secondary {
-  background: #FFFFFF;
-  color: #FF5A36;
-  border: 1.5px solid #FF5A36;
+  background: transparent;
+  color: #171412;
+  border: 1.5px solid rgba(23, 20, 18, 0.2);
   border-radius: 9999px;
   padding: 12px 24px;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   text-decoration: none;
   display: inline-flex;
@@ -3215,28 +3107,30 @@
 }
 
 .insp-btn-secondary:hover {
-  background: #FFF0EB;
+  border-color: #171412;
+  background: rgba(23, 20, 18, 0.04);
 }
 
 /* --------------------------------------------------------------------------
    5. NEWSLETTER SECTION ("A little joy in your inbox.")
    -------------------------------------------------------------------------- */
 .insp-newsletter-section {
-  padding: 20px 0 68px;
+  padding: 20px 0 80px;
   background: #FFFFFF;
 }
 
 .insp-newsletter-card {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF5A36 100%);
+  background: #171412;
   border-radius: 28px;
-  padding: 38px 48px;
+  padding: 44px 52px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 32px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 14px 38px rgba(255, 90, 54, 0.28);
+  box-shadow: 0 16px 40px rgba(23, 20, 18, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .insp-newsletter-content {
@@ -3253,13 +3147,14 @@
 .insp-newsletter-title {
   color: #FFFFFF;
   font-size: 1.85rem;
-  font-weight: 900;
+  font-weight: 800;
   margin: 0 0 6px;
-  font-family: var(--font-display, 'Outfit', sans-serif);
+  letter-spacing: -0.02em;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
 }
 
 .insp-newsletter-sub {
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 14.5px;
   margin: 0;
   font-weight: 500;
@@ -3273,44 +3168,38 @@
 .insp-newsletter-input-wrap {
   background: #FFFFFF;
   border-radius: 9999px;
-  padding: 6px 6px 6px 22px;
+  padding: 6px 6px 6px 20px;
   display: flex;
   align-items: center;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
 }
 
 .insp-newsletter-input {
   border: none;
   outline: none;
-  font-size: 14.5px;
-  color: #232220;
+  font-size: 14px;
+  color: #171412;
   flex-grow: 1;
   padding: 8px 0;
   background: transparent;
 }
 
 .insp-newsletter-submit-btn {
-  background: #232220;
+  background: #E85923;
   color: #FFFFFF;
   border: none;
   border-radius: 9999px;
-  padding: 12px 24px;
+  padding: 12px 26px;
   font-size: 13.5px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .insp-newsletter-submit-btn:hover {
-  background: #000000;
-}
-
-.insp-newsletter-sparkle {
-  position: absolute;
-  top: 14px;
-  right: 20px;
-  opacity: 0.8;
+  background: #D04B19;
+  transform: translateY(-1px);
 }
 
 /* --------------------------------------------------------------------------

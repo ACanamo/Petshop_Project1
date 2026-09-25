@@ -62,13 +62,13 @@ export default function ProductQuickViewModal() {
   const getPerks = (cat) => {
     switch (cat) {
       case 'feeds':
-        return ['🌱 100% Real Nutrition', '✨ Shiny Coat & Gut Health', '🚚 Fresh Batch'];
+        return ['100% Real Nutrition', 'Shiny Coat & Gut Health', 'Fresh Batch Assurance'];
       case 'grooming':
-        return ['🫧 Hypoallergenic & Gentle', '🌿 Botanical Extracts', '🐾 Sensitive Skin Safe'];
+        return ['Hypoallergenic & Gentle', 'Botanical Extracts', 'Sensitive Skin Safe'];
       case 'wellness':
-        return ['🛡️ Vet Recommended', '⚡ Active Vitality Formula', '🔬 Lab Tested'];
+        return ['Vet Recommended', 'Active Vitality Formula', 'Third-Party Tested'];
       default:
-        return ['⭐ Premium Quality', '🐾 Pet Approved', '🚚 Fast Dispatch'];
+        return ['Premium Materials', 'Quality Approved', 'Reliable Dispatch'];
     }
   };
 
@@ -77,7 +77,7 @@ export default function ProductQuickViewModal() {
   const handleAddToCart = () => {
     if (!product.inStock) return;
     addToCart(product, qty);
-    setBtnText('Added to Cart! ✨');
+    setBtnText('Added to Cart');
     window.clearTimeout(resetButtonTimer.current);
     resetButtonTimer.current = window.setTimeout(() => setBtnText(''), 1500);
   };

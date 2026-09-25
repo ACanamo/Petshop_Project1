@@ -178,7 +178,7 @@ export function CartProvider({ children }) {
       return [...prev, newItem];
     });
 
-    showToast(`🎉 Added ${product.name} to cart!`);
+    showToast(`Added ${product.name} to cart`);
     syncItemToCloud(newItem);
   };
 
@@ -226,11 +226,11 @@ export function CartProvider({ children }) {
 
     let discountObj = null;
     if (code === "FIRSTPAW20" || code === "WELCOME20") {
-      discountObj = { code, percent: 20, label: "First-Time Member 20% OFF 🎉" };
+      discountObj = { code, percent: 20, label: "First-Time Member 20% OFF" };
     } else if (code === "FIRSTPAW15" || code === "PAWTY15") {
-      discountObj = { code, percent: 15, label: "15% Special Offer Discount 🐾" };
+      discountObj = { code, percent: 15, label: "15% Special Offer Discount" };
     } else if (code === "MEOW10" || code === "WOOF10") {
-      discountObj = { code, percent: 10, label: "10% Paw Perks Discount 🦴" };
+      discountObj = { code, percent: 10, label: "10% Paw Perks Discount" };
     } else {
       return {
         success: false,
@@ -239,7 +239,7 @@ export function CartProvider({ children }) {
     }
 
     setActiveDiscount(discountObj);
-    showToast(`🎉 Coupon ${discountObj.code} (-${discountObj.percent}%) applied!`);
+    showToast(`Coupon ${discountObj.code} (-${discountObj.percent}%) applied!`);
     return { success: true, discount: discountObj };
   };
 

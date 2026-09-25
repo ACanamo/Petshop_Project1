@@ -6,7 +6,7 @@ import { formatPeso, getBadgeClass, getCategoryTint, getPetLabel, getCategoryLab
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
   const { openProductView } = useStore();
-  const [btnText, setBtnText] = useState("Add to Cart 🛒");
+  const [btnText, setBtnText] = useState("Add to Cart");
   const [imgError, setImgError] = useState(false);
   const [isPopping, setIsPopping] = useState(false);
   const resetButtonTimer = useRef(null);
@@ -22,10 +22,10 @@ export default function ProductCard({ product }) {
     if (!product.inStock) return;
     addToCart(product, 1);
 
-    setBtnText("Added! ✨");
+    setBtnText("Added to Cart");
     window.clearTimeout(resetButtonTimer.current);
     resetButtonTimer.current = window.setTimeout(() => {
-      setBtnText("Add to Cart 🛒");
+      setBtnText("Add to Cart");
     }, 1200);
 
     setIsPopping(false);

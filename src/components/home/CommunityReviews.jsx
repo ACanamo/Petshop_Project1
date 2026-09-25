@@ -30,33 +30,29 @@ export default function CommunityReviews() {
       <div className="insp-container">
         {/* Header */}
         <div className="insp-reviews-header">
+          <span className="insp-reviews-eyebrow">TESTIMONIALS</span>
           <h2 id="community-heading" className="insp-section-title">
-            Happy pets. Happy people.
-            <span className="insp-sparkle" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="#FF6B35"/>
-              </svg>
-            </span>
+            Loved by companions &amp; their humans.
           </h2>
-          <p className="insp-section-sub">Stories from our pet-loving community.</p>
+          <p className="insp-section-sub">Real stories from our dedicated community of pet parents.</p>
         </div>
 
         {/* 3 Review Cards */}
         <div className="insp-reviews-grid">
           {REVIEWS.map(item => (
             <div key={item.id} className="insp-review-card">
-              {/* Quote Mark */}
-              <div className="insp-quote-icon" aria-hidden="true">
-                <svg width="28" height="22" viewBox="0 0 28 22" fill="#FF6B35">
-                  <path d="M7.7 0C3.45 0 0 3.45 0 7.7C0 14.3 5.5 19.8 11 22L12.1 19.8C8.8 18.7 6.6 15.4 6.6 12.1C7 12.1 7.35 12.1 7.7 12.1C11.95 12.1 15.4 8.65 15.4 4.4C15.4 2 11.95 0 7.7 0ZM20.3 0C16.05 0 12.6 3.45 12.6 7.7C12.6 14.3 18.1 19.8 23.6 22L24.7 19.8C21.4 18.7 19.2 15.4 19.2 12.1C19.6 12.1 19.95 12.1 20.3 12.1C24.55 12.1 28 8.65 28 4.4C28 2 24.55 0 20.3 0Z"/>
-                </svg>
+              {/* Star Rating */}
+              <div className="insp-review-stars" aria-label="5 out of 5 stars">
+                {[...Array(5)].map((_, i) => (
+                  <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill="#E85923" stroke="none">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                ))}
               </div>
 
-              <span className="insp-review-tag">Sample review</span>
-
-              <p className="insp-review-quote">
-                "{item.quote}"
-              </p>
+              <blockquote className="insp-review-quote">
+                &ldquo;{item.quote}&rdquo;
+              </blockquote>
 
               <div className="insp-review-author-wrap">
                 <img
@@ -65,7 +61,10 @@ export default function CommunityReviews() {
                   className="insp-review-avatar"
                   loading="lazy"
                 />
-                <span className="insp-review-author">{item.author}</span>
+                <div>
+                  <span className="insp-review-author">{item.author}</span>
+                  <span className="insp-review-pet-name">{item.pet}</span>
+                </div>
               </div>
             </div>
           ))}

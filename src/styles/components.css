@@ -2160,8 +2160,14 @@
 
 /* 4. What does your pet need? Section */
 .petchup-needs-section {
-  background-color: transparent;
-  padding: 60px 0 80px;
+  position: relative;
+  background: 
+    radial-gradient(ellipse 75% 65% at 50% 100%, rgba(232, 89, 35, 0.12) 0%, rgba(232, 89, 35, 0) 70%),
+    linear-gradient(180deg, #FFFFFF 0%, #FFF9F4 45%, #FDE9DC 100%);
+  border-top: 1px solid rgba(232, 89, 35, 0.08);
+  border-bottom: 1px solid rgba(232, 89, 35, 0.08);
+  padding: 72px 0 88px;
+  box-shadow: 0 6px 30px rgba(232, 89, 35, 0.05);
 }
 
 .needs-container {

@@ -5,7 +5,7 @@ import { useCart } from '../../context/CartContext';
 import { useStore } from '../../context/StoreContext';
 import { formatPeso } from '../../lib/constants';
 
-function FeaturedCard({ product }) {
+export function FeaturedCard({ product }) {
   const { addToCart, cart } = useCart();
   const { openProductView } = useStore();
   const [added, setAdded] = useState(false);

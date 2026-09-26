@@ -12,7 +12,7 @@ import { formatPeso, getOrderStatusMeta } from '../lib/constants';
 import { getAllowedTransitions, isTerminalStatus } from '../lib/orderLifecycle';
 import { supabase, SUPABASE_URL, isConfigured, testConnection } from '../lib/supabase';
 import { readJSON } from '../lib/storage';
-import { TrashIcon } from '@phosphor-icons/react';
+import { ArrowSquareOut, Megaphone, Package, PawPrint, ShoppingCart, SignOut, TrashIcon, Warning } from '@phosphor-icons/react';
 
 // Shared soft "play" card treatment — mirrors the rounded, softly-shadowed
 // cards used across the landing page (category cards, product cards, hero
@@ -180,110 +180,57 @@ export default function AdminPage() {
   const displayOrders = orderViewFilter === 'archived' ? archivedOrders : activeOrders;
 
   const TABS = [
-    { key: 'products', label: `📦 Products Catalog (${products.length})` },
-    { key: 'announcements', label: `📢 Announcements (${announcements.length})` },
-    { key: 'orders', label: `🛍️ Orders Manager (${activeOrders.length})` },
-    { key: 'sync', label: '☁️ Supabase Cloud' },
-    { key: 'errors', label: `🐞 System Errors${errorLogs.length ? ` (${errorLogs.length})` : ''}` }
+    { key: 'products', label: 'Products Catalog', count: products.length, icon: Package },
+    { key: 'announcements', label: 'Announcements', count: announcements.length, icon: Megaphone },
+    { key: 'orders', label: 'Orders Manager', count: activeOrders.length, icon: ShoppingCart },
+    { key: 'sync', label: 'Supabase Cloud', icon: Cloud },
+    { key: 'errors', label: 'System Errors', count: errorLogs.length || null, icon: Warning }
   ];
 
   return (
-    <main className="admin-page-main" style={{ padding: '32px 0 80px', fontFamily: 'var(--font-play)' }}>
-      <div className="play-wrap">
-        {/* Top Admin Header Bar */}
-        <div style={{
-          ...CARD_STYLE,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '16px',
-          borderRadius: '24px',
-          padding: '20px 28px',
-          marginBottom: '24px'
-        }}>
-          <div>
-            <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--play-purple)' }}>
-              Store Management Console
-            </span>
-            <h1 style={{ margin: '2px 0 0', fontSize: '24px', fontWeight: 900, color: 'var(--play-charcoal)' }}>
-              Pet Care Control Center
-            </h1>
-          </div>
+    <main className="admin-page-main admin-dashboard" style={{ fontFamily: 'var(--font-play)' }}>
+      <div className="play-wrap admin-dashboard-layout">
+        <aside className="admin-dashboard-sidebar">
+          <Link to="/shop" className="admin-dashboard-brand" aria-label="Petchup home">
+            <span className="admin-dashboard-brand-icon"><PawPrint weight="fill" aria-hidden="true" /></span>
+            <span>petchup<span className="admin-dashboard-brand-dot">.</span></span>
+          </Link>
+          <div className="admin-sidebar-caption">STORE MANAGEMENT</div>
+          <nav className="admin-dashboard-nav" aria-label="Store management sections">
+            {TABS.map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={`admin-dashboard-tab${activeTab === tab.key ? ' is-active' : ''}`}
+                  onClick={() => setActiveTab(tab.key)}
+                  aria-current={activeTab === tab.key ? 'page' : undefined}
+                >
+                  <Icon size={19} weight={activeTab === tab.key ? 'fill' : 'regular'} aria-hidden="true" />
+                  <span>{tab.label}</span>
+                  {tab.count != null && <span className="admin-tab-count">{tab.count}</span>}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="admin-sidebar-note"><span aria-hidden="true">✦</span> A happy little shop, all in one place.</div>
+        </aside>
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <Link
-              to="/shop"
-              className="btn btn-outline btn-pill"
-              style={{ fontSize: '13px' }}
-            >
-              🛍️ View Live Shop
-            </Link>
+        <div className="admin-dashboard-main">
+          <header className="admin-dashboard-topbar">
+            <div>
+              <span className="admin-dashboard-eyebrow">Store Management Console</span>
+              <h1>Pet Care Control Center</h1>
+              <p>Here’s what’s happening at your shop today.</p>
+            </div>
+            <div className="admin-dashboard-actions">
+              <Link to="/shop" className="admin-shop-link"><ArrowSquareOut size={17} aria-hidden="true" /> View Live Shop</Link>
+              <button type="button" className="admin-exit-button" onClick={logout}><SignOut size={17} aria-hidden="true" /> Exit Admin</button>
+            </div>
+          </header>
 
-            <button
-              type="button"
-              className="btn btn-outline btn-pill"
-              onClick={logout}
-              style={{
-                borderColor: '#FFC4CA',
-                color: '#B82531',
-                background: '#FFF5F6',
-                fontWeight: 700,
-                fontSize: '13px'
-              }}
-            >
-              🚪 Exit Admin
-            </button>
-          </div>
-        </div>
-
-        {/* 6-Metric Ribbon */}
-        <MetricsRibbon
-          products={products}
-          announcements={announcements}
-          orders={displayOrders}
-        />
-
-        {/* Tab Navigation (pill style, matches shop toolbar filters) */}
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '20px',
-          overflowX: 'auto',
-          paddingBottom: '4px'
-        }}>
-          {TABS.map(tab => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                padding: '10px 20px',
-                borderRadius: '9999px',
-                whiteSpace: 'nowrap',
-                fontFamily: 'var(--font-play)',
-                fontWeight: 700,
-                fontSize: '14px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                ...(activeTab === tab.key
-                  ? {
-                      border: '1.5px solid transparent',
-                      background: 'linear-gradient(135deg, var(--play-orange) 0%, #FF834E 100%)',
-                      color: '#fff',
-                      boxShadow: '0 4px 14px rgba(255, 107, 53, 0.32)'
-                    }
-                  : {
-                      border: '1.5px solid var(--play-border)',
-                      background: '#FAFAFA',
-                      color: 'var(--play-charcoal)'
-                    })
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+          <MetricsRibbon products={products} announcements={announcements} orders={displayOrders} />
 
         {/* TAB 1: Products Manager */}
         {activeTab === 'products' && (
@@ -1009,6 +956,7 @@ export default function AdminPage() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* Modals */}

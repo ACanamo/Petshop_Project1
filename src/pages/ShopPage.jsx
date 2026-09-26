@@ -20,10 +20,9 @@ export default function ShopPage() {
     const validCategories = ['feeds', 'accessories', 'grooming', 'wellness'];
     setSelectedCategory(validCategories.includes(cat) ? cat : 'all');
 
-    const q = searchParams.get('q');
-    if (q !== null) {
-      setSearch(q);
-    }
+    setSearch(searchParams.get('q') || '');
+    const pet = searchParams.get('pet');
+    setSelectedPet(['dog', 'cat'].includes(pet) ? pet : 'all');
   }, [searchParams]);
 
   const handleCategoryChange = (category) => {
@@ -31,6 +30,22 @@ export default function ShopPage() {
     const nextParams = new URLSearchParams(searchParams);
     if (category === 'all') nextParams.delete('cat');
     else nextParams.set('cat', category);
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const handlePetChange = (pet) => {
+    setSelectedPet(pet);
+    const nextParams = new URLSearchParams(searchParams);
+    if (pet === 'all') nextParams.delete('pet');
+    else nextParams.set('pet', pet);
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const handleSearchChange = (value) => {
+    setSearch(value);
+    const nextParams = new URLSearchParams(searchParams);
+    if (value) nextParams.set('q', value);
+    else nextParams.delete('q');
     setSearchParams(nextParams, { replace: true });
   };
 
@@ -66,6 +81,8 @@ export default function ShopPage() {
     setSortBy('popular');
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('cat');
+    nextParams.delete('pet');
+    nextParams.delete('q');
     setSearchParams(nextParams, { replace: true });
   };
 
@@ -82,11 +99,11 @@ export default function ShopPage() {
 
         <FilterToolbar
           search={search}
-          setSearch={setSearch}
+          setSearch={handleSearchChange}
           selectedCategory={selectedCategory}
           setSelectedCategory={handleCategoryChange}
           selectedPet={selectedPet}
-          setSelectedPet={setSelectedPet}
+          setSelectedPet={handlePetChange}
           sortBy={sortBy}
           setSortBy={setSortBy}
           productCount={filteredProducts.length}

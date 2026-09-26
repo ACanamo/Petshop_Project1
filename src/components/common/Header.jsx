@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   GearIcon as Gear,
   UserCircleIcon as UserCircle,
@@ -21,6 +21,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useOrders } from '../../context/OrdersContext';
 
 export default function Header() {
+  const reduceMotion = useReducedMotion();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,6 +30,22 @@ export default function Header() {
   const { openOrderHistory } = useOrders();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+    setUserDropdownOpen(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const dismiss = (event) => {
+      if (event.key === 'Escape') {
+        setMobileNavOpen(false);
+        setUserDropdownOpen(false);
+      }
+    };
+    window.addEventListener('keydown', dismiss);
+    return () => window.removeEventListener('keydown', dismiss);
+  }, []);
 
   // Playful bump on the cart button whenever an item is added
   const [cartBump, setCartBump] = useState(false);
@@ -122,7 +139,7 @@ export default function Header() {
 
         {/* Search Bar */}
         <form onSubmit={handleSearchSubmit} className="petchup-search-bar" role="search">
-          <MagnifyingGlass size={16} weight="bold" className="search-icon" aria-hidden="true" />
+          <button type="submit" className="pg-search-submit" aria-label="Submit product search"><MagnifyingGlass size={16} weight="bold" aria-hidden="true" /></button>
           <input
             type="search"
             placeholder="Search products..."
@@ -213,8 +230,7 @@ export default function Header() {
 
           {/* Cart Pill Button with Framer Motion spring */}
           <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.95 }}
+            whileTap={reduceMotion ? undefined : { scale: 0.97 }}
             type="button"
             className={`petchup-cart-btn ${cartBump ? 'is-bumping' : ''}`}
             id="cart-toggle-btn"
@@ -227,9 +243,9 @@ export default function Header() {
               {totalCount > 0 && (
                 <motion.span
                   key={totalCount}
-                  initial={{ scale: 0.4, opacity: 0 }}
+                  initial={reduceMotion ? false : { scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.4, opacity: 0 }}
+                  exit={{ opacity: 0 }}
                   transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                   className="cart-counter-badge"
                   id="cart-counter"
@@ -246,6 +262,7 @@ export default function Header() {
             className={`petchup-mobile-toggle ${mobileNavOpen ? 'is-active' : ''}`}
             id="nav-toggle"
             aria-expanded={mobileNavOpen}
+            aria-controls="petchup-mobile-nav"
             aria-label="Toggle navigation menu"
             onClick={toggleMobileNav}
           >
@@ -257,12 +274,13 @@ export default function Header() {
       </div>
 
       {/* Mobile Drawer */}
-      <div className={`petchup-mobile-drawer ${mobileNavOpen ? 'open' : ''}`}>
+      <div id="petchup-mobile-nav" className={`petchup-mobile-drawer ${mobileNavOpen ? 'open' : ''}`}>
         <form onSubmit={handleSearchSubmit} className="mobile-search-form">
-          <MagnifyingGlass size={16} weight="bold" aria-hidden="true" />
+          <button type="submit" className="pg-search-submit" aria-label="Submit mobile product search"><MagnifyingGlass size={16} weight="bold" aria-hidden="true" /></button>
           <input
             type="search"
             placeholder="Search products..."
+            aria-label="Search products on mobile"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />

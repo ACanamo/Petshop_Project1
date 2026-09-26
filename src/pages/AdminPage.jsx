@@ -12,7 +12,7 @@ import { formatPeso, getOrderStatusMeta } from '../lib/constants';
 import { getAllowedTransitions, isTerminalStatus } from '../lib/orderLifecycle';
 import { supabase, SUPABASE_URL, isConfigured, testConnection } from '../lib/supabase';
 import { readJSON } from '../lib/storage';
-import { ArrowSquareOut, Megaphone, Package, PawPrint, ShoppingCart, SignOut, TrashIcon, Warning } from '@phosphor-icons/react';
+import { ArrowSquareOut, Cloud, Megaphone, Package, PawPrint, ShoppingCart, SignOut, TrashIcon, Warning } from '@phosphor-icons/react';
 
 // Shared soft "play" card treatment — mirrors the rounded, softly-shadowed
 // cards used across the landing page (category cards, product cards, hero
